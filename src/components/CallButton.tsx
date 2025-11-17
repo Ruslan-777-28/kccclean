@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Phone } from "lucide-react";
 import { v4 as uuid } from "uuid";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
+import { createCall } from "@/lib/firestore";
 
 type CallButtonProps = {
   calleeId: string;
@@ -57,34 +58,25 @@ export default function CallButton({ calleeId, calleeName, isOnline }: CallButto
     setLoading(true);
 
     try {
-      // 1️⃣ Генеруємо callId
-      const callId = uuid();
-
-      // 2️⃣ Створюємо документ calls/{callId}
-      await setDoc(doc(db, "calls", callId), {
-        callerId: user.uid,
-        calleeId: calleeId,
-        status: "ringing",
-        createdAt: serverTimestamp(),
-        roomUrl: null,
-      });
-
+      // 1️⃣ Генеруємо callId та створюємо документи
       toast({
         title: "Calling...",
         description: `Connecting you with ${calleeName}.`,
       });
+      
+      const callId = await createCall(db, user.uid, calleeId, userProfile.displayName);
 
-      // 3️⃣ Викликаємо Cloud Function createDailyRoom
+      // 2️⃣ Викликаємо Cloud Function createDailyRoom
       const createRoom = httpsCallable(funcs, "createDailyRoom");
-
       const result: any = await createRoom({ callId });
 
       if (!result?.data?.roomUrl) {
         throw new Error("No room URL received from Daily API");
       }
 
-      // 4️⃣ Після отримання roomUrl → переходимо у кімнату
+      // 3️⃣ Після отримання roomUrl → переходимо у кімнату
       router.push(`/call/${callId}`);
+
     } catch (error: any) {
       console.error("Call initiation failed:", error);
       toast({

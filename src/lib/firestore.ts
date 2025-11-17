@@ -94,6 +94,33 @@ export function updateUserAvatar(db: Firestore, uid: string, url: string): Promi
 
 // --- Call Functions ---
 
+export async function createCall(db: Firestore, callerId: string, calleeId: string, callerName: string): Promise<string> {
+    const batch = writeBatch(db);
+
+    const callDocRef = doc(collection(db, "calls"));
+    const callId = callDocRef.id;
+
+    batch.set(callDocRef, {
+        callerId,
+        calleeId,
+        status: "ringing",
+        roomUrl: null,
+        createdAt: serverTimestamp(),
+    });
+
+    const incomingDocRef = doc(db, "incoming", calleeId);
+    batch.set(incomingDocRef, {
+        callId,
+        callerId,
+        callerName,
+    });
+    
+    await batch.commit();
+
+    return callId;
+}
+
+
 export function listenToCall(db: Firestore, callId: string, callback: (call: Call | null) => void): Unsubscribe {
   const callDocRef = doc(db, 'calls', callId);
   return onSnapshot(callDocRef, 

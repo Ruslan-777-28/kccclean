@@ -2,15 +2,17 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import DailyIframe, { DailyCall } from "@daily-co/daily-js";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 export default function CallPage({ params }: { params: { callId: string } }) {
-  const { db } = useAuth();
+  const { db, user } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const iframeRef = useRef<HTMLDivElement | null>(null);
   const callRef = useRef<DailyCall | null>(null);
 
@@ -20,18 +22,19 @@ export default function CallPage({ params }: { params: { callId: string } }) {
 
   // ---------- 1. SUBSCRIBE TO CALL DOCUMENT ----------
   useEffect(() => {
-    if (!db) {
-        setError("Database connection not available.");
-        setLoading(false);
-        return;
-    };
+    if (!db || !params.callId) {
+      setError("Database connection not available or Call ID is missing.");
+      setLoading(false);
+      return;
+    }
 
     const callDocRef = doc(db, "calls", params.callId);
 
     const unsub = onSnapshot(callDocRef, (snap) => {
       if (!snap.exists()) {
-        setError("Call not found.");
+        setError("Call not found. You will be redirected.");
         setLoading(false);
+        setTimeout(() => router.push('/'), 3000);
         return;
       }
       const data = snap.data();
@@ -42,9 +45,10 @@ export default function CallPage({ params }: { params: { callId: string } }) {
       }
       
       if (data.status === 'ended' || data.status === 'declined') {
-        setError("This call has ended.");
-        setLoading(false);
-        handleLeave();
+         if(!error) { // Prevent multiple toasts
+          toast({ title: "Call Ended", description: "This call has ended or was declined." });
+          handleLeave(false); // Don't update status again if it's already ended
+        }
       }
     }, (err) => {
         console.error("Firestore snapshot error:", err);
@@ -53,35 +57,26 @@ export default function CallPage({ params }: { params: { callId: string } }) {
     });
 
     return () => unsub();
-  }, [db, params.callId]);
+  }, [db, params.callId, router, toast]);
 
   // ---------- 2. SETUP DAILY IFRAME ----------
   useEffect(() => {
-    if (!roomUrl) return;
-    if (!iframeRef.current) return;
+    if (!roomUrl || !iframeRef.current) return;
+    if (callRef.current) callRef.current.destroy();
 
-    // Destroy any existing call object
-    if (callRef.current) {
-        callRef.current.destroy();
-    }
-
-    // Create Daily call object
-    const call = DailyIframe.createCallObject({
-        // url: roomUrl // URL is provided in join()
-    });
+    const call = DailyIframe.createCallObject({ url: roomUrl });
     callRef.current = call;
 
-    // Join the call
-    call
-      .join({
-        url: roomUrl,
-        showLeaveButton: false, // We use our own leave button
-        showFullscreenButton: true,
-      })
+    const handleLeftMeeting = () => {
+      router.push("/");
+    };
+    call.on('left-meeting', handleLeftMeeting);
+
+    call.join({ showLeaveButton: false, showFullscreenButton: true })
       .then(() => {
-        // Embed the iframe into our container
         if (iframeRef.current) {
-            call.iframe(iframeRef.current)?.style.setProperty('display', 'block');
+          call.iframe()?.style.setProperty('display', 'block');
+          iframeRef.current.appendChild(call.iframe()!);
         }
       })
       .catch((err) => {
@@ -89,41 +84,22 @@ export default function CallPage({ params }: { params: { callId: string } }) {
         setError("Could not join the video room.");
       });
 
-    // --- Event Listeners for Cleanup ---
-    const handleLeftMeeting = () => {
-        // This is called when the user is ejected or leaves via other means
-        router.push("/");
-    };
-
-    call.on('left-meeting', handleLeftMeeting);
-
-    // Cleanup when component unmounts
     return () => {
       call.off('left-meeting', handleLeftMeeting);
-      
-      // Ensure we leave and destroy the call object
-      // This is a safeguard
-      call?.leave().then(() => call?.destroy()).catch(() => call?.destroy());
+      call.leave().then(() => call.destroy()).catch(() => call.destroy());
+      callRef.current = null;
     };
   }, [roomUrl, router]);
 
   // ---------- 3. END CALL ----------
-  const handleLeave = async () => {
+  const handleLeave = async (updateStatus = true) => {
     if (callRef.current) {
-      try {
-        await callRef.current.leave();
-        await callRef.current.destroy();
-        callRef.current = null;
-      } catch (e) {
-        console.error("Error leaving Daily call", e);
-        // Destroy anyway
-        if(callRef.current) {
-          callRef.current.destroy();
-          callRef.current = null;
-        }
-      }
+      await callRef.current.leave();
     }
-    router.push("/"); // Go back to home page
+    if (db && updateStatus) {
+       await updateDoc(doc(db, "calls", params.callId), { status: "ended" });
+    }
+    router.push("/");
   };
   
   if (error) {
@@ -138,32 +114,21 @@ export default function CallPage({ params }: { params: { callId: string } }) {
 
   return (
     <div className="w-full h-screen flex flex-col bg-black">
-      
-      {/* TOP BAR */}
       <div className="w-full flex justify-between items-center p-4 bg-gray-900 text-white z-10">
         <h1 className="text-lg font-headline font-semibold">ConnectNow Call</h1>
-        <Button
-          onClick={handleLeave}
-          variant="destructive"
-        >
+        <Button onClick={() => handleLeave()} variant="destructive">
           Leave Call
         </Button>
       </div>
 
-      {/* DAILY VIDEO AREA */}
       <div className="flex-1 relative">
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black">
-            <Loader2 className="w-10 h-10 text-white animate-spin" />
-            <p className="ml-4 text-white">Connecting to video call...</p>
+        {(loading || !roomUrl) && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black text-white">
+            <Loader2 className="w-10 h-10 animate-spin" />
+            <p className="mt-4">Waiting for room to be created...</p>
           </div>
         )}
-
-        <div
-          ref={iframeRef}
-          className="w-full h-full"
-          style={{ display: loading || error ? 'none' : 'block' }}
-        />
+        <div ref={iframeRef} className="w-full h-full" style={{ display: loading ? 'none' : 'block' }}/>
       </div>
     </div>
   );

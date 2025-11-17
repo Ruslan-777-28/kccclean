@@ -36,5 +36,15 @@ service cloud.firestore {
                     && (request.auth.uid == resource.data.callerId || request.auth.uid == resource.data.calleeId)
                     && (request.resource.data.status in ["ringing", "accepted", "ended", "declined"]);
     }
+    
+    // --- INCOMING CALL NOTIFICATIONS ---
+    match /incoming/{userId} {
+        // The callee can read their own notification
+        allow read: if request.auth != null && request.auth.uid == userId;
+        // The caller can create a notification for the callee
+        allow create: if request.auth != null;
+        // The callee can delete their notification
+        allow delete: if request.auth != null && request.auth.uid == userId;
+    }
   }
 }
