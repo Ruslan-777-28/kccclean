@@ -1,3 +1,7 @@
+// =========================
+// VIDEO CALL PROJECT RULES
+// =========================
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -13,30 +17,29 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // ---------- Incoming calls ----------
+    // Incoming calls (calleeId = documentId)
     match /incoming/{uid} {
+      // only recipient can read
       allow read: if request.auth != null && request.auth.uid == uid;
+
+      // caller creates the incoming doc → allow all auth users to write
       allow write: if request.auth != null;
     }
 
-    // ---------- Calls ----------
+    // Calls main collection
     match /calls/{callId} {
 
-      // Створити дзвінок — дозволено всім авторизованим
+      // anyone authenticated may create a call 
       allow create: if request.auth != null;
 
-      // Читати / оновлювати можуть ТІЛЬКИ учасники дзвінка
+      // read/update allowed only to participants
       allow read, update: if request.auth != null
         && (
-          request.auth.uid == resource.data.callerId ||
-          request.auth.uid == resource.data.calleeId
+          resource.data.callerId == request.auth.uid ||
+          resource.data.calleeId == request.auth.uid
         );
-
-      // Видалити — дозволяємо тимчасово для MVP
-      allow delete: if request.auth != null;
     }
 
-    // ---------- fallback (забороняє все інше) ----------
     match /{document=**} {
       allow read, write: if false;
     }
