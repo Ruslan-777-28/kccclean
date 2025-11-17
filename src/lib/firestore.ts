@@ -14,13 +14,26 @@ import {
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import type { UserPublic, Call, CallStatus } from './types';
+import type { UserPublic, Call, CallStatus, UserPrivate } from './types';
 
 // --- User Functions ---
 
-export async function createUserProfile(uid: string, data: Omit<UserPublic, 'uid'>) {
+export async function createUserPublicProfile(uid: string, data: Omit<UserPublic, 'uid'>) {
   await setDoc(doc(db, 'users_public', uid), { ...data, uid });
-  await setDoc(doc(db, 'users_private', uid), { uid, email: data.email });
+}
+
+export async function createUserPrivateProfile(uid: string, data: Omit<UserPrivate, 'uid' | 'email'> & { email: string }) {
+  await setDoc(doc(db, 'users_private', uid), { ...data, uid });
+}
+
+
+export async function createUserProfile(uid: string, data: { displayName: string, email: string, photoURL: string }) {
+  await createUserPublicProfile(uid, { 
+    displayName: data.displayName, 
+    photoURL: data.photoURL,
+    email: data.email
+  });
+  await createUserPrivateProfile(uid, { email: data.email });
 }
 
 export async function getUserProfile(uid: string): Promise<UserPublic | null> {
@@ -35,6 +48,11 @@ export async function getAllUsers(): Promise<UserPublic[]> {
   const usersCollection = collection(db, 'users_public');
   const userSnapshot = await getDocs(usersCollection);
   return userSnapshot.docs.map(doc => doc.data() as UserPublic);
+}
+
+export async function updateUserAvatar(uid: string, url: string) {
+    const userDocRef = doc(db, 'users_public', uid);
+    await updateDoc(userDocRef, { photoURL: url });
 }
 
 
