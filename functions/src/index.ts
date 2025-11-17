@@ -4,11 +4,11 @@ import { defineSecret } from "firebase-functions/params";
 import { getFirestore } from "firebase-admin/firestore";
 import fetch from "node-fetch";
 
-// Initialize admin SDK
+// Ініціалізація Firebase Admin
 import { initializeApp } from "firebase-admin/app";
 initializeApp();
 
-
+// Підключаємо секрет DAILY_API_KEY
 const DAILY_API_KEY = defineSecret("DAILY_API_KEY");
 
 export const createDailyRoom = onCall(
@@ -25,7 +25,7 @@ export const createDailyRoom = onCall(
         throw new Error("Missing callId");
       }
 
-      // 1. Create a Daily room
+      // --- 1. Створюємо кімнату Daily ---
       const response = await fetch("https://api.daily.co/v1/rooms", {
         method: "POST",
         headers: {
@@ -34,7 +34,7 @@ export const createDailyRoom = onCall(
         },
         body: JSON.stringify({
           properties: {
-            exp: Math.floor(Date.now() / 1000) + 60 * 60, // expire in 1 hour
+            exp: Math.floor(Date.now() / 1000) + 60 * 60,
             enable_screenshare: true,
             enable_chat: true,
             eject_at_room_exp: true,
@@ -43,7 +43,7 @@ export const createDailyRoom = onCall(
         }),
       });
 
-      const data = await response.json() as any;
+      const data: { url?: string; [key: string]: any } = await response.json();
 
       if (!data.url) {
         logger.error("Daily API error:", data);
@@ -52,7 +52,7 @@ export const createDailyRoom = onCall(
 
       const roomUrl = data.url;
 
-      // 2. Save roomUrl to Firestore
+      // --- 2. Зберігаємо roomUrl у Firestore ---
       const db = getFirestore();
       await db.collection("calls").doc(callId).update({
         roomUrl,

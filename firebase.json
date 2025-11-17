@@ -4,11 +4,14 @@
     "runtime": "nodejs20"
   },
   "hosting": {
-    "site": "connectnow", 
     "public": "public",
     "ignore": [
       "**/.*",
       "**/node_modules/**"
-    ]
+    ],
+    "site": "YOUR_FIREBASE_HOSTING_SITE_ID"
   }
 }
+
+
+
