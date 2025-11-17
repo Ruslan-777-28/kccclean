@@ -48,20 +48,16 @@ export function createUserProfile(db: Firestore, user: User, data: { displayName
   batch.set(privateDocRef, privateProfileData);
 
   return batch.commit().catch((serverError) => {
-    // This could fail on either write, we can't be sure which one.
-    // We'll report the error on the public profile path as a representative example.
     const permissionError = new FirestorePermissionError({
       path: publicDocRef.path,
       operation: 'create',
       requestResourceData: { public: publicProfileData, private: privateProfileData },
     }, serverError);
     errorEmitter.emit('permission-error', permissionError);
-    // Re-throw the original error to be caught by the calling function if needed
     throw serverError;
   });
 }
 
-// NOTE: This function is for client-side use.
 export async function getUserProfile(db: Firestore, uid: string): Promise<UserPublic | null> {
   const userDocRef = doc(db, 'users_public', uid);
   try {
@@ -80,7 +76,6 @@ export async function getUserProfile(db: Firestore, uid: string): Promise<UserPu
   }
 }
 
-
 export function updateUserAvatar(db: Firestore, uid: string, url: string): Promise<void> {
     const userDocRef = doc(db, 'users_public', uid);
     const dataToUpdate = { photoURL: url };
@@ -95,7 +90,6 @@ export function updateUserAvatar(db: Firestore, uid: string, url: string): Promi
         throw serverError;
       });
 }
-
 
 // --- Call Functions ---
 
@@ -136,10 +130,9 @@ export function listenToCall(db: Firestore, callId: string, callback: (call: Cal
     (serverError) => {
       const permissionError = new FirestorePermissionError({
         path: callDocRef.path,
-        operation: 'get', // 'get' for a document listener
+        operation: 'get',
       }, serverError);
       errorEmitter.emit('permission-error', permissionError);
-      // Also notify the component that the listen failed
       callback(null);
     }
   );
@@ -159,7 +152,6 @@ export function listenToIncomingCalls(db: Firestore, userId: string, callback: (
       operation: 'list',
     }, serverError);
     errorEmitter.emit('permission-error', permissionError);
-    // Notify component that listen failed
     callback([]);
   });
 }

@@ -50,7 +50,8 @@ export default function IncomingCallListener() {
 
   const handleDecline = async () => {
     if (!incomingCall || !db) return;
-    await updateCallStatus(db, incomingCall.id, "declined");
+    // We'll set status to 'ended' instead of declined to simplify the flow
+    await updateCallStatus(db, incomingCall.id, "ended");
     setIncomingCall(null);
   };
 
@@ -64,15 +65,15 @@ export default function IncomingCallListener() {
                     <AvatarFallback>{callerProfile.displayName?.charAt(0)}</AvatarFallback>
                 </Avatar>
             )}
-          <AlertDialogTitle className="font-headline text-2xl">Incoming Call</AlertDialogTitle>
+          <AlertDialogTitle className="font-headline text-2xl">Вхідний дзвінок</AlertDialogTitle>
           <AlertDialogDescription>
-            You have an incoming call from{" "}
+            Вам телефонує{" "}
             <span className="font-bold text-primary">{callerProfile?.displayName || "Unknown"}</span>.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="sm:justify-center">
-          <AlertDialogAction onClick={handleAccept} className="bg-green-600 hover:bg-green-700">Accept</AlertDialogAction>
-          <AlertDialogCancel onClick={handleDecline} className="bg-red-600 hover:bg-red-700 text-white">Decline</AlertDialogCancel>
+          <AlertDialogAction onClick={handleAccept} className="bg-green-600 hover:bg-green-700">Прийняти</AlertDialogAction>
+          <AlertDialogCancel onClick={handleDecline} className="bg-red-600 hover:bg-red-700 text-white">Відхилити</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

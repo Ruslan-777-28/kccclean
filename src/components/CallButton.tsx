@@ -11,9 +11,10 @@ import { Loader2, Phone } from "lucide-react";
 type CallButtonProps = {
   calleeId: string;
   calleeName: string;
+  isOnline: boolean;
 };
 
-export default function CallButton({ calleeId, calleeName }: CallButtonProps) {
+export default function CallButton({ calleeId, calleeName, isOnline }: CallButtonProps) {
   const { user, userProfile, db } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -64,13 +65,20 @@ export default function CallButton({ calleeId, calleeName }: CallButtonProps) {
   };
 
   return (
-    <Button onClick={handleCall} disabled={loading} className="w-full bg-accent hover:bg-accent/90">
+    <Button 
+      onClick={handleCall} 
+      disabled={loading || !isOnline} 
+      className={`w-full transition-colors ${
+        isOnline ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 cursor-not-allowed opacity-70'
+      }`}
+      title={isOnline ? `Call ${calleeName}` : `${calleeName} is offline`}
+    >
       {loading ? (
         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
       ) : (
         <Phone className="mr-2 h-4 w-4" />
       )}
-      Call {calleeName}
+      {isOnline ? `Call ${calleeName}` : 'Offline'}
     </Button>
   );
 }

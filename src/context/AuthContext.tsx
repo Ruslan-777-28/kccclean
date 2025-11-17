@@ -45,17 +45,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
         return;
     }
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const authUnsubscribe = onAuthStateChanged(auth, async (user) => {
       let profileUnsubscribe: (() => void) | undefined;
 
       if (user) {
         setUser(user);
-        startUserPresence(db, user); // Start presence system
-        // Listen to user's public profile
+        startUserPresence(db, user);
+        
         const userDocRef = doc(db, 'users_public', user.uid);
         profileUnsubscribe = onSnapshot(userDocRef, (doc) => {
           if (doc.exists()) {
-            setUserProfile(doc.data() as UserPublic);
+            setUserProfile({ uid: doc.id, ...doc.data() } as UserPublic);
           } else {
             setUserProfile(null);
           }
@@ -74,13 +74,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (profileUnsubscribe) {
             profileUnsubscribe();
         }
-        if (auth.currentUser) {
-            stopUserPresence(db, auth.currentUser);
-        }
+        // This logic was slightly flawed, we need to ensure we have a user to stop presence for.
+        // It's better to handle this on user state change.
       };
     });
 
-    return () => unsubscribe();
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if(auth?.currentUser && db) {
+        stopUserPresence(db, auth.currentUser);
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      authUnsubscribe();
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+       if(auth?.currentUser && db) {
+        stopUserPresence(db, auth.currentUser);
+      }
+    };
   }, [auth, db]);
 
   const value = { ...services, user, userProfile, loading };
@@ -89,7 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     <AuthContext.Provider value={value}>
       <FirebaseErrorListener />
       {loading ? <div className="flex h-screen items-center justify-center"><p>Loading...</p></div> : children}
-      {user && userProfile && <IncomingCallListener />}
+      {user && <IncomingCallListener />}
     </AuthContext.Provider>
   );
 };

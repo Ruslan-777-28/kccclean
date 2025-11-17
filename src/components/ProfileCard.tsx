@@ -31,6 +31,12 @@ export default function ProfileCard({ user, showBio = false, onAvatarClick, isUp
             <AvatarImage src={user.photoURL} alt={user.displayName} data-ai-hint="person portrait" />
             <AvatarFallback>{user.displayName.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
+           <span
+              className={`absolute bottom-1 right-1 block h-5 w-5 rounded-full border-2 border-white ${
+                user.isOnline ? "bg-green-500" : "bg-gray-400"
+              }`}
+              title={user.isOnline ? "Online" : "Offline"}
+            />
           {(isUploading || isEditable) && (
             <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               {isUploading ? (
@@ -48,7 +54,7 @@ export default function ProfileCard({ user, showBio = false, onAvatarClick, isUp
            <p className="text-muted-foreground">A passionate member of the ConnectNow community. Ready to connect and collaborate!</p>
         )}
         <div className="flex flex-col gap-2">
-            <CallButton calleeId={user.uid} calleeName={user.displayName} />
+            <CallButton calleeId={user.uid} calleeName={user.displayName} isOnline={user.isOnline ?? false} />
             {!showBio && (
                 <Button asChild variant="outline">
                     <Link href={`/profile/${user.uid}`}>View Profile</Link>
