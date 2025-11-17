@@ -1,0 +1,26 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // --- AVATARS ---
+    // Path: avatars/{uid}.jpg
+    match /avatars/{userId} {
+
+      // Public read: anyone can view profile photos
+      allow read: if true;
+
+      // Only authenticated user can upload or replace their avatar
+      allow create, update: if request.auth != null
+                            && request.auth.uid == userId;
+
+      // Only the owner can delete their avatar
+      allow delete: if request.auth != null
+                    && request.auth.uid == userId;
+    }
+
+    // --- SAFE DEFAULT FOR OTHER FILES ---
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
