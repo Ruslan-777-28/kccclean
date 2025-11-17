@@ -1,4 +1,5 @@
 import { ref, uploadBytes, getDownloadURL, deleteObject, type FirebaseStorage } from 'firebase/storage';
+import { errorEmitter } from './error-emitter';
 
 /**
  * Uploads an avatar for a user and returns the download URL.
@@ -11,12 +12,22 @@ export async function uploadAvatar(storage: FirebaseStorage, uid: string, file: 
   const filePath = `avatars/${uid}.jpg`;
   const storageRef = ref(storage, filePath);
 
-  // Upload the file
-  await uploadBytes(storageRef, file);
+  try {
+    // Upload the file
+    await uploadBytes(storageRef, file);
 
-  // Get the download URL
-  const downloadURL = await getDownloadURL(storageRef);
-  return downloadURL;
+    // Get the download URL
+    const downloadURL = await getDownloadURL(storageRef);
+    return downloadURL;
+  } catch (error: any) {
+    // Storage errors for permissions often have a specific code
+    if (error.code === 'storage/unauthorized') {
+      console.error("Firebase Storage Permission Error: You don't have permission to upload to", filePath);
+      // Here you could potentially emit a more specific storage error if you had a system like Firestore's
+    }
+    // Re-throw the error to be handled by the calling function
+    throw error;
+  }
 }
 
 /**
@@ -33,6 +44,9 @@ export async function deleteAvatar(storage: FirebaseStorage, uid: string): Promi
   } catch (error: any) {
     // It's okay if the file doesn't exist.
     if (error.code !== 'storage/object-not-found') {
+      if (error.code === 'storage/unauthorized') {
+         console.error("Firebase Storage Permission Error: You don't have permission to delete", filePath);
+      }
       throw error;
     }
   }
