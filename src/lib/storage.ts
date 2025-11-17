@@ -9,12 +9,12 @@ import { errorEmitter } from './error-emitter';
  * @returns The public URL of the uploaded image.
  */
 export async function uploadAvatar(storage: FirebaseStorage, uid: string, file: File): Promise<string> {
-  const filePath = `avatars/${uid}.jpg`;
+  const filePath = `avatars/${uid}`;
   const storageRef = ref(storage, filePath);
 
   try {
     // Upload the file
-    await uploadBytes(storageRef, file);
+    await uploadBytes(storageRef, file, { contentType: file.type });
 
     // Get the download URL
     const downloadURL = await getDownloadURL(storageRef);
@@ -36,7 +36,7 @@ export async function uploadAvatar(storage: FirebaseStorage, uid: string, file: 
  * @param uid The user's ID.
  */
 export async function deleteAvatar(storage: FirebaseStorage, uid: string): Promise<void> {
-  const filePath = `avatars/${uid}.jpg`;
+  const filePath = `avatars/${uid}`;
   const storageRef = ref(storage, filePath);
 
   try {
