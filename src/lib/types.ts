@@ -5,6 +5,8 @@ export interface UserPublic {
   email: string;
   displayName: string;
   photoURL: string;
+  isOnline?: boolean;
+  lastActive?: Timestamp;
 }
 
 export interface UserPrivate {

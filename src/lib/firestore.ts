@@ -22,7 +22,7 @@ import { FirestorePermissionError } from './errors';
 
 // --- User Functions ---
 
-export async function createUserProfile(db: Firestore, user: User, data: { displayName: string, email: string, photoURL: string }): Promise<void> {
+export function createUserProfile(db: Firestore, user: User, data: { displayName: string, email: string, photoURL: string }): Promise<void> {
   const batch = writeBatch(db);
 
   const publicDocRef = doc(db, 'users_public', user.uid);
@@ -31,6 +31,8 @@ export async function createUserProfile(db: Firestore, user: User, data: { displ
     displayName: data.displayName,
     email: data.email,
     photoURL: data.photoURL,
+    isOnline: false,
+    lastActive: serverTimestamp() as Timestamp,
   };
   batch.set(publicDocRef, publicProfileData);
 
@@ -41,7 +43,7 @@ export async function createUserProfile(db: Firestore, user: User, data: { displ
   };
   batch.set(privateDocRef, privateProfileData);
 
-  batch.commit().catch((serverError) => {
+  return batch.commit().catch((serverError) => {
     // This could fail on either write, we can't be sure which one.
     // We'll report the error on the public profile path as a representative example.
     const permissionError = new FirestorePermissionError({
@@ -90,9 +92,9 @@ export async function getAllUsers(db: Firestore): Promise<UserPublic[]> {
   }
 }
 
-export function updateUserAvatar(db: Firestore, uid: string, url: string): void {
+export function updateUserAvatar(db: Firestore, uid: string, url: string): Promise<void> {
     const userDocRef = doc(db, 'users_public', uid);
-    updateDoc(userDocRef, { photoURL: url })
+    return updateDoc(userDocRef, { photoURL: url })
       .catch((serverError) => {
         const permissionError = new FirestorePermissionError({
           path: userDocRef.path,
@@ -133,7 +135,7 @@ export async function createCall(db: Firestore, callerId: string, calleeId: stri
 
 export function listenToCall(db: Firestore, callId: string, callback: (call: Call | null) => void): Unsubscribe {
   const callDocRef = doc(db, 'calls', callId);
-  return onSnapshot(callDocRef, (doc) => {
+  const unsub = onSnapshot(callDocRef, (doc) => {
     if (doc.exists()) {
       callback({ id: doc.id, ...doc.data() } as Call);
     } else {
@@ -146,11 +148,12 @@ export function listenToCall(db: Firestore, callId: string, callback: (call: Cal
       }, serverError);
       errorEmitter.emit('permission-error', permissionError);
   });
+  return unsub;
 }
 
-export function updateCallStatus(db: Firestore, callId: string, status: CallStatus): void {
+export function updateCallStatus(db: Firestore, callId: string, status: CallStatus): Promise<void> {
   const callDocRef = doc(db, 'calls', callId);
-  updateDoc(callDocRef, { status })
+  return updateDoc(callDocRef, { status })
     .catch((serverError) => {
         const permissionError = new FirestorePermissionError({
           path: callDocRef.path,
@@ -171,7 +174,7 @@ export function listenToIncomingCalls(db: Firestore, userId: string, callback: (
     limit(1)
   );
 
-  return onSnapshot(q, (snapshot) => {
+  const unsub = onSnapshot(q, (snapshot) => {
     const calls = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Call));
     callback(calls);
   }, (serverError) => {
@@ -181,4 +184,5 @@ export function listenToIncomingCalls(db: Firestore, userId: string, callback: (
       }, serverError);
       errorEmitter.emit('permission-error', permissionError);
   });
+  return unsub;
 }

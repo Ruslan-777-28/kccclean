@@ -18,12 +18,12 @@ import { useRouter } from 'next/navigation';
 import Logo from '../Logo';
 
 export default function Header() {
-  const { user, userProfile, loading, auth } = useAuth();
+  const { user, userProfile, loading, auth, db } = useAuth();
   const router = useRouter();
 
   const handleSignOut = async () => {
-    if (!auth) return;
-    await signOutUser(auth);
+    if (!auth || !db) return;
+    await signOutUser(auth, db);
     router.push('/login');
   };
 

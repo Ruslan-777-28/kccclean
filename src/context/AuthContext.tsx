@@ -7,6 +7,7 @@ import { getClientServices, type Auth, type Firestore, type FirebaseStorage, typ
 import { UserPublic } from '@/lib/types';
 import IncomingCallListener from '@/components/IncomingCallListener';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
+import { startUserPresence, stopUserPresence } from '@/lib/userPresence';
 
 interface FirebaseServices {
   app: FirebaseApp | null;
@@ -40,16 +41,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { auth, db } = services;
 
   useEffect(() => {
-    if (!auth) {
+    if (!auth || !db) {
         setLoading(false);
         return;
     }
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
-      if (user && db) {
+      let profileUnsubscribe: (() => void) | undefined;
+
+      if (user) {
+        setUser(user);
+        startUserPresence(db, user); // Start presence system
         // Listen to user's public profile
         const userDocRef = doc(db, 'users_public', user.uid);
-        const unsubProfile = onSnapshot(userDocRef, (doc) => {
+        profileUnsubscribe = onSnapshot(userDocRef, (doc) => {
           if (doc.exists()) {
             setUserProfile(doc.data() as UserPublic);
           } else {
@@ -57,11 +61,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
           setLoading(false);
         });
-        return () => unsubProfile();
       } else {
+        if(auth.currentUser) {
+            stopUserPresence(db, auth.currentUser);
+        }
+        setUser(null);
         setUserProfile(null);
         setLoading(false);
       }
+
+      return () => {
+        if (profileUnsubscribe) {
+            profileUnsubscribe();
+        }
+        if (auth.currentUser) {
+            stopUserPresence(db, auth.currentUser);
+        }
+      };
     });
 
     return () => unsubscribe();
