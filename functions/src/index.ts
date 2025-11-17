@@ -43,7 +43,7 @@ export const createDailyRoom = onCall(
         }),
       });
 
-      const data: { url?: string; [key: string]: any } = await response.json();
+      const data: { url?: string; [key: string]: any } = await response.json() as any;
 
       if (!data.url) {
         logger.error("Daily API error:", data);
