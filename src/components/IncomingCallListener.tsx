@@ -18,18 +18,18 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 export default function IncomingCallListener() {
-  const { user } = useAuth();
+  const { user, db } = useAuth();
   const router = useRouter();
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
   const [callerProfile, setCallerProfile] = useState<UserPublic | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
-    const unsubscribe = listenToIncomingCalls(user.uid, async (calls) => {
+    const unsubscribe = listenToIncomingCalls(db, user.uid, async (calls) => {
       const call = calls.length > 0 ? calls[0] : null;
       if (call) {
-        const profile = await getUserProfile(call.callerId);
+        const profile = await getUserProfile(db, call.callerId);
         setCallerProfile(profile);
         setIncomingCall(call);
       } else {
@@ -39,18 +39,18 @@ export default function IncomingCallListener() {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, db]);
 
   const handleAccept = async () => {
-    if (!incomingCall) return;
-    await updateCallStatus(incomingCall.id, "accepted");
+    if (!incomingCall || !db) return;
+    await updateCallStatus(db, incomingCall.id, "accepted");
     router.push(`/call/${incomingCall.id}`);
     setIncomingCall(null);
   };
 
   const handleDecline = async () => {
-    if (!incomingCall) return;
-    await updateCallStatus(incomingCall.id, "declined");
+    if (!incomingCall || !db) return;
+    await updateCallStatus(db, incomingCall.id, "declined");
     setIncomingCall(null);
   };
 

@@ -14,21 +14,22 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 export default function CallPlaceholder({ call }: { call: Call }) {
-  const { user } = useAuth();
+  const { user, db } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [caller, setCaller] = useState<UserPublic | null>(null);
   const [callee, setCallee] = useState<UserPublic | null>(null);
 
   useEffect(() => {
+    if (!db) return;
     async function fetchParticipants() {
-      const callerProfile = await getUserProfile(call.callerId);
-      const calleeProfile = await getUserProfile(call.calleeId);
+      const callerProfile = await getUserProfile(db, call.callerId);
+      const calleeProfile = await getUserProfile(db, call.calleeId);
       setCaller(callerProfile);
       setCallee(calleeProfile);
     }
     fetchParticipants();
-  }, [call.callerId, call.calleeId]);
+  }, [call.callerId, call.calleeId, db]);
   
   useEffect(() => {
     if (call.status === 'ended') {
@@ -38,7 +39,8 @@ export default function CallPlaceholder({ call }: { call: Call }) {
   }, [call.status, router, toast]);
 
   const handleEndCall = async () => {
-    await updateCallStatus(call.id, 'ended');
+    if (!db) return;
+    await updateCallStatus(db, call.id, 'ended');
   };
   
   const otherParticipant = user?.uid === caller?.uid ? callee : caller;

@@ -14,7 +14,7 @@ type CallButtonProps = {
 };
 
 export default function CallButton({ calleeId, calleeName }: CallButtonProps) {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, db } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -34,6 +34,15 @@ export default function CallButton({ calleeId, calleeName }: CallButtonProps) {
       router.push("/login");
       return;
     }
+    
+    if (!db) {
+      toast({
+        variant: "destructive",
+        title: "Database Error",
+        description: "Could not connect to the database.",
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -41,7 +50,7 @@ export default function CallButton({ calleeId, calleeName }: CallButtonProps) {
         title: "Starting Call...",
         description: `Connecting you with ${calleeName}.`,
       });
-      const callId = await createCall(user.uid, calleeId);
+      const callId = await createCall(db, user.uid, calleeId);
       router.push(`/call/${callId}`);
     } catch (error) {
       console.error("Failed to create call:", error);

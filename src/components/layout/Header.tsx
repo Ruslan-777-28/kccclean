@@ -13,16 +13,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogIn, LogOut, User as UserIcon, UserPlus, Video } from 'lucide-react';
+import { LogIn, LogOut, User as UserIcon, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Logo from '../Logo';
 
 export default function Header() {
-  const { user, userProfile, loading } = useAuth();
+  const { user, userProfile, loading, auth } = useAuth();
   const router = useRouter();
 
   const handleSignOut = async () => {
-    await signOutUser();
+    if (!auth) return;
+    await signOutUser(auth);
     router.push('/login');
   };
 

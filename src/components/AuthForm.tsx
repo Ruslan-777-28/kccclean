@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Label } from './ui/label';
+import { useAuth } from '@/context/AuthContext';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -33,6 +34,7 @@ type AuthFormProps = {
 export default function AuthForm({ mode }: AuthFormProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { auth, db, storage } = useAuth();
   const [loading, setLoading] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const schema = mode === 'login' ? loginSchema : signupSchema;
@@ -43,18 +45,27 @@ export default function AuthForm({ mode }: AuthFormProps) {
   });
 
   const onSubmit = async (values: z.infer<typeof schema>) => {
+    if (!auth || !db || !storage) {
+      toast({
+        variant: 'destructive',
+        title: 'Initialization Error',
+        description: 'Firebase is not ready. Please try again in a moment.',
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       if (mode === 'signup') {
         const { displayName, email, password, avatar } = values as z.infer<typeof signupSchema>;
         const avatarFile = avatar instanceof FileList && avatar.length > 0 ? avatar[0] : null;
-        const user = await signUp(email, password, displayName, avatarFile);
+        const user = await signUp(auth, db, storage, email, password, displayName, avatarFile);
         toast({ title: 'Success', description: 'Account created successfully!' });
         router.push(`/profile/${user.uid}`);
         router.refresh();
       } else {
         const { email, password } = values as z.infer<typeof loginSchema>;
-        const user = await signIn(email, password);
+        const user = await signIn(auth, email, password);
         toast({ title: 'Success', description: 'Logged in successfully!' });
         router.push(`/profile/${user.uid}`);
         router.refresh();

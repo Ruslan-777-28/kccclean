@@ -5,18 +5,20 @@ import { useEffect, useState } from "react";
 import { listenToCall } from "@/lib/firestore";
 import type { Call } from "@/lib/types";
 import CallPlaceholder from "@/components/CallPlaceholder";
+import { useAuth } from "@/context/AuthContext";
 
 export default function CallPage() {
   const params = useParams();
   const callId = params.callId as string;
+  const { db } = useAuth();
   const [callData, setCallData] = useState<Call | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!callId) return;
+    if (!callId || !db) return;
 
-    const unsubscribe = listenToCall(callId, (call) => {
+    const unsubscribe = listenToCall(db, callId, (call) => {
       if (call) {
         setCallData(call);
         setError(null);
@@ -27,7 +29,7 @@ export default function CallPage() {
     });
 
     return () => unsubscribe();
-  }, [callId]);
+  }, [callId, db]);
 
   if (loading) {
     return (

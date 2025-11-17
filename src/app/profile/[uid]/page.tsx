@@ -1,31 +1,40 @@
-import { notFound } from 'next/navigation';
+"use client";
+
+import { notFound, useParams } from 'next/navigation';
 import { getUserProfile } from '@/lib/firestore';
 import ProfileCard from '@/components/ProfileCard';
 import { UserPublic } from '@/lib/types';
-import { Metadata } from 'next';
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/context/AuthContext';
 
-type Props = {
-  params: { uid: string };
-};
+export default function ProfilePage() {
+  const params = useParams();
+  const uid = params.uid as string;
+  const { db } = useAuth();
+  const [user, setUser] = useState<UserPublic | null>(null);
+  const [loading, setLoading] = useState(true);
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const user = await getUserProfile(params.uid);
-  if (!user) {
-    return {
-      title: 'User Not Found',
+  useEffect(() => {
+    if (!db || !uid) return;
+    const fetchUser = async () => {
+      const userProfile = await getUserProfile(db, uid);
+      setUser(userProfile);
+      setLoading(false);
     };
+    fetchUser();
+  }, [db, uid]);
+
+  if (loading) {
+    return <div className="flex h-[70vh] items-center justify-center"><p>Loading profile...</p></div>;
   }
-  return {
-    title: `${user.displayName}'s Profile | ConnectNow`,
-  };
-}
-
-export default async function ProfilePage({ params }: { params: { uid:string } }) {
-  const user = await getUserProfile(params.uid);
-
+  
   if (!user) {
     notFound();
   }
+  
+  // The metadata generation has been removed as it requires a server component
+  // and we've converted this to a client component.
+  // A different approach would be needed for dynamic metadata here.
 
   return (
     <div className="flex flex-col items-center justify-center">

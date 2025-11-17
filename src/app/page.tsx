@@ -1,9 +1,23 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { getAllUsers } from "@/lib/firestore";
 import ProfileCard from "@/components/ProfileCard";
 import { UserPublic } from "@/lib/types";
+import { useAuth } from "@/context/AuthContext";
 
-export default async function Home() {
-  const users = await getAllUsers();
+export default function Home() {
+  const [users, setUsers] = useState<UserPublic[]>([]);
+  const { db } = useAuth();
+
+  useEffect(() => {
+    if (!db) return;
+    const fetchUsers = async () => {
+      const userList = await getAllUsers(db);
+      setUsers(userList);
+    };
+    fetchUsers();
+  }, [db]);
 
   return (
     <div className="text-center">

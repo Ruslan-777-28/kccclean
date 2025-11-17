@@ -3,17 +3,28 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { getClientServices, type Auth, type Firestore, type FirebaseStorage, type FirebaseApp } from '@/lib/firebase';
 import { UserPublic } from '@/lib/types';
 import IncomingCallListener from '@/components/IncomingCallListener';
 
-interface AuthContextType {
+interface FirebaseServices {
+  app: FirebaseApp | null;
+  auth: Auth | null;
+  db: Firestore | null;
+  storage: FirebaseStorage | null;
+}
+
+interface AuthContextType extends FirebaseServices {
   user: User | null;
   userProfile: UserPublic | null;
   loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
+  app: null,
+  auth: null,
+  db: null,
+  storage: null,
   user: null,
   userProfile: null,
   loading: true,
@@ -23,11 +34,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserPublic | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  const services = getClientServices();
+  const { auth, db } = services;
 
   useEffect(() => {
+    if (!auth) {
+        setLoading(false);
+        return;
+    }
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
-      if (user) {
+      if (user && db) {
         // Listen to user's public profile
         const userDocRef = doc(db, 'users_public', user.uid);
         const unsubProfile = onSnapshot(userDocRef, (doc) => {
@@ -46,10 +64,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [auth, db]);
+
+  const value = { ...services, user, userProfile, loading };
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, loading }}>
+    <AuthContext.Provider value={value}>
       {loading ? <div className="flex h-screen items-center justify-center"><p>Loading...</p></div> : children}
       {user && userProfile && <IncomingCallListener />}
     </AuthContext.Provider>

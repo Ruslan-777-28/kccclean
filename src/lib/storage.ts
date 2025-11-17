@@ -1,13 +1,13 @@
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { storage } from './firebase';
+import { ref, uploadBytes, getDownloadURL, deleteObject, type FirebaseStorage } from 'firebase/storage';
 
 /**
  * Uploads an avatar for a user and returns the download URL.
+ * @param storage The Firebase Storage instance.
  * @param uid The user's ID.
  * @param file The avatar file to upload.
  * @returns The public URL of the uploaded image.
  */
-export async function uploadAvatar(uid: string, file: File): Promise<string> {
+export async function uploadAvatar(storage: FirebaseStorage, uid: string, file: File): Promise<string> {
   const filePath = `avatars/${uid}.jpg`;
   const storageRef = ref(storage, filePath);
 
@@ -21,9 +21,10 @@ export async function uploadAvatar(uid: string, file: File): Promise<string> {
 
 /**
  * Deletes a user's avatar from Firebase Storage.
+ * @param storage The Firebase Storage instance.
  * @param uid The user's ID.
  */
-export async function deleteAvatar(uid: string): Promise<void> {
+export async function deleteAvatar(storage: FirebaseStorage, uid: string): Promise<void> {
   const filePath = `avatars/${uid}.jpg`;
   const storageRef = ref(storage, filePath);
 
