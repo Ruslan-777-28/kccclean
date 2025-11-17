@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { createCall } from "@/lib/firestore";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Phone } from "lucide-react";
+import { v4 as uuid } from "uuid";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 type CallButtonProps = {
   calleeId: string;
@@ -15,15 +17,13 @@ type CallButtonProps = {
 };
 
 export default function CallButton({ calleeId, calleeName, isOnline }: CallButtonProps) {
-  const { user, userProfile, db } = useAuth();
+  const { user, userProfile, db, functions: funcs } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  // Don't show call button on your own profile
-  if (!user || user.uid === calleeId) {
-    return null;
-  }
+  // Hide call button on own profile
+  if (!user || user.uid === calleeId) return null;
 
   const handleCall = async () => {
     if (!user || !userProfile) {
@@ -35,41 +35,73 @@ export default function CallButton({ calleeId, calleeName, isOnline }: CallButto
       router.push("/login");
       return;
     }
-    
-    if (!db) {
+
+    if (!db || !funcs) {
       toast({
         variant: "destructive",
         title: "Database Error",
-        description: "Could not connect to the database.",
+        description: "Could not connect to the database or functions.",
+      });
+      return;
+    }
+
+    if (!isOnline) {
+      toast({
+        variant: "destructive",
+        title: "User Offline",
+        description: `${calleeName} is currently offline.`,
       });
       return;
     }
 
     setLoading(true);
+
     try {
+      // 1️⃣ Генеруємо callId
+      const callId = uuid();
+
+      // 2️⃣ Створюємо документ calls/{callId}
+      await setDoc(doc(db, "calls", callId), {
+        callerId: user.uid,
+        calleeId: calleeId,
+        status: "ringing",
+        createdAt: serverTimestamp(),
+        roomUrl: null,
+      });
+
       toast({
-        title: "Starting Call...",
+        title: "Calling...",
         description: `Connecting you with ${calleeName}.`,
       });
-      const callId = await createCall(db, user.uid, calleeId);
+
+      // 3️⃣ Викликаємо Cloud Function createDailyRoom
+      const createRoom = httpsCallable(funcs, "createDailyRoom");
+
+      const result: any = await createRoom({ callId });
+
+      if (!result?.data?.roomUrl) {
+        throw new Error("No room URL received from Daily API");
+      }
+
+      // 4️⃣ Після отримання roomUrl → переходимо у кімнату
       router.push(`/call/${callId}`);
-    } catch (error) {
-      console.error("Failed to create call:", error);
+    } catch (error: any) {
+      console.error("Call initiation failed:", error);
       toast({
         variant: "destructive",
         title: "Call Failed",
-        description: "Could not initiate the call. Please try again.",
+        description: error.message || "Could not initiate the call.",
       });
       setLoading(false);
     }
   };
 
   return (
-    <Button 
-      onClick={handleCall} 
-      disabled={loading || !isOnline} 
+    <Button
+      onClick={handleCall}
+      disabled={loading || !isOnline}
       className={`w-full transition-colors ${
-        isOnline ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 cursor-not-allowed opacity-70'
+        isOnline ? "bg-green-500 hover:bg-green-600" : "bg-red-500 cursor-not-allowed opacity-70"
       }`}
       title={isOnline ? `Call ${calleeName}` : `${calleeName} is offline`}
     >
@@ -78,7 +110,7 @@ export default function CallButton({ calleeId, calleeName, isOnline }: CallButto
       ) : (
         <Phone className="mr-2 h-4 w-4" />
       )}
-      {isOnline ? `Call ${calleeName}` : 'Offline'}
+      {loading ? "Connecting..." : isOnline ? `Call ${calleeName}` : "Offline"}
     </Button>
   );
 }

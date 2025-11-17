@@ -94,30 +94,6 @@ export function updateUserAvatar(db: Firestore, uid: string, url: string): Promi
 
 // --- Call Functions ---
 
-export async function createCall(db: Firestore, callerId: string, calleeId: string): Promise<string> {
-  const callsCollection = collection(db, 'calls');
-  const callData = {
-    callerId,
-    calleeId,
-    status: 'ringing' as CallStatus,
-    roomUrl: null,
-    createdAt: serverTimestamp(),
-  };
-
-  try {
-    const callDocRef = await addDoc(callsCollection, callData);
-    return callDocRef.id;
-  } catch (serverError) {
-    const permissionError = new FirestorePermissionError({
-      path: callsCollection.path,
-      operation: 'create',
-      requestResourceData: callData,
-    }, serverError);
-    errorEmitter.emit('permission-error', permissionError);
-    throw serverError;
-  }
-}
-
 export function listenToCall(db: Firestore, callId: string, callback: (call: Call | null) => void): Unsubscribe {
   const callDocRef = doc(db, 'calls', callId);
   return onSnapshot(callDocRef, 
