@@ -14,7 +14,8 @@ service cloud.firestore {
     // USERS
     // Public user profiles can be read by anyone, but only created and updated by the owner.
     match /users_public/{userId} {
-      allow read: if true;
+      allow get: if true; // Allow anyone to get a single public profile
+      allow list: if isSignedIn(); // Only signed-in users can list all profiles
       allow create, update: if isOwner(userId);
     }
     
