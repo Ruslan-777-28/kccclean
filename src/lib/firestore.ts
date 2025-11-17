@@ -18,22 +18,26 @@ import type { UserPublic, Call, CallStatus, UserPrivate } from './types';
 
 // --- User Functions ---
 
-export async function createUserPublicProfile(uid: string, data: Omit<UserPublic, 'uid'>) {
+export async function createUserPublicProfile(uid: string, data: Omit<UserPublic, 'uid'>): Promise<void> {
   await setDoc(doc(db, 'users_public', uid), { ...data, uid });
 }
 
-export async function createUserPrivateProfile(uid: string, data: Omit<UserPrivate, 'uid' | 'email'> & { email: string }) {
+export async function createUserPrivateProfile(uid: string, data: Omit<UserPrivate, 'uid' | 'email'> & { email: string }): Promise<void> {
   await setDoc(doc(db, 'users_private', uid), { ...data, uid });
 }
 
-
-export async function createUserProfile(uid: string, data: { displayName: string, email: string, photoURL: string }) {
-  await createUserPublicProfile(uid, { 
-    displayName: data.displayName, 
+export async function createUserProfile(uid: string, data: { displayName: string, email: string, photoURL: string }): Promise<void> {
+  const publicProfileData = {
+    displayName: data.displayName,
+    email: data.email,
     photoURL: data.photoURL,
-    email: data.email
-  });
-  await createUserPrivateProfile(uid, { email: data.email });
+  };
+  const privateProfileData = {
+    email: data.email,
+  };
+
+  await createUserPublicProfile(uid, publicProfileData);
+  await createUserPrivateProfile(uid, privateProfileData);
 }
 
 export async function getUserProfile(uid: string): Promise<UserPublic | null> {
@@ -50,7 +54,7 @@ export async function getAllUsers(): Promise<UserPublic[]> {
   return userSnapshot.docs.map(doc => doc.data() as UserPublic);
 }
 
-export async function updateUserAvatar(uid: string, url: string) {
+export async function updateUserAvatar(uid: string, url: string): Promise<void> {
     const userDocRef = doc(db, 'users_public', uid);
     await updateDoc(userDocRef, { photoURL: url });
 }
