@@ -4,7 +4,7 @@ service cloud.firestore {
 
     // ---------- Users public ----------
     match /users_public/{uid} {
-      allow read: if true;        // всім дозволено читати
+      allow read: if true;
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 
@@ -20,16 +20,22 @@ service cloud.firestore {
 
     // ---------- Calls ----------
     match /calls/{callId} {
+
+      // Створити дзвінок — дозволено всім авторизованим
       allow create: if request.auth != null;
 
+      // Читати / оновлювати можуть ТІЛЬКИ учасники дзвінка
       allow read, update: if request.auth != null
         && (
           request.auth.uid == resource.data.callerId ||
           request.auth.uid == resource.data.calleeId
         );
+
+      // Видалити — дозволяємо тимчасово для MVP
+      allow delete: if request.auth != null;
     }
 
-    // fallback
+    // ---------- fallback (забороняє все інше) ----------
     match /{document=**} {
       allow read, write: if false;
     }
