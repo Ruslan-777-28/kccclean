@@ -6,10 +6,8 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Phone } from "lucide-react";
-import { v4 as uuid } from "uuid";
-import { doc, setDoc, serverTimestamp, writeBatch } from "firebase/firestore";
-import { getFunctions, httpsCallable } from "firebase/functions";
 import { createCall } from "@/lib/firestore";
+import { httpsCallable } from "firebase/functions";
 
 type CallButtonProps = {
   calleeId: string;
@@ -40,8 +38,8 @@ export default function CallButton({ calleeId, calleeName, isOnline }: CallButto
     if (!db || !funcs) {
       toast({
         variant: "destructive",
-        title: "Database Error",
-        description: "Could not connect to the database or functions.",
+        title: "Initialization Error",
+        description: "Firebase services are not ready.",
       });
       return;
     }
@@ -58,23 +56,19 @@ export default function CallButton({ calleeId, calleeName, isOnline }: CallButto
     setLoading(true);
 
     try {
-      // 1️⃣ Генеруємо callId та створюємо документи
       toast({
-        title: "Calling...",
+        title: "Starting Call...",
         description: `Connecting you with ${calleeName}.`,
       });
-      
-      const callId = await createCall(db, user.uid, calleeId, userProfile.displayName);
 
-      // 2️⃣ Викликаємо Cloud Function createDailyRoom
+      // 1) Create calls + incoming documents
+      const callId = await createCall(db, user.uid, calleeId, userProfile.displayName || "Anonymous Caller");
+
+      // 2) Call Cloud Function to create Daily room
       const createRoom = httpsCallable(funcs, "createDailyRoom");
-      const result: any = await createRoom({ callId });
+      await createRoom({ callId });
 
-      if (!result?.data?.roomUrl) {
-        throw new Error("No room URL received from Daily API");
-      }
-
-      // 3️⃣ Після отримання roomUrl → переходимо у кімнату
+      // 3) Navigate to the call page
       router.push(`/call/${callId}`);
 
     } catch (error: any) {
@@ -93,7 +87,7 @@ export default function CallButton({ calleeId, calleeName, isOnline }: CallButto
       onClick={handleCall}
       disabled={loading || !isOnline}
       className={`w-full transition-colors ${
-        isOnline ? "bg-green-500 hover:bg-green-600" : "bg-red-500 cursor-not-allowed opacity-70"
+        isOnline ? "bg-green-500 hover:bg-green-600" : "bg-gray-500 cursor-not-allowed opacity-70"
       }`}
       title={isOnline ? `Call ${calleeName}` : `${calleeName} is offline`}
     >

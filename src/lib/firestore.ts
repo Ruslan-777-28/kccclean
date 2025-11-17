@@ -94,30 +94,37 @@ export function updateUserAvatar(db: Firestore, uid: string, url: string): Promi
 
 // --- Call Functions ---
 
-export async function createCall(db: Firestore, callerId: string, calleeId: string, callerName: string): Promise<string> {
-    const batch = writeBatch(db);
+export async function createCall(
+  db: Firestore,
+  callerId: string,
+  calleeId: string,
+  callerName: string
+): Promise<string> {
+  const batch = writeBatch(db);
 
-    const callDocRef = doc(collection(db, "calls"));
-    const callId = callDocRef.id;
+  const callDocRef = doc(collection(db, "calls"));
+  const callId = callDocRef.id;
 
-    batch.set(callDocRef, {
-        callerId,
-        calleeId,
-        status: "ringing",
-        roomUrl: null,
-        createdAt: serverTimestamp(),
-    });
+  batch.set(callDocRef, {
+    callerId,
+    calleeId,
+    callerName,
+    status: "ringing",
+    roomUrl: null,
+    createdAt: serverTimestamp(),
+  });
 
-    const incomingDocRef = doc(db, "incoming", calleeId);
-    batch.set(incomingDocRef, {
-        callId,
-        callerId,
-        callerName,
-    });
-    
-    await batch.commit();
+  const incomingDocRef = doc(db, "incoming", calleeId);
+  batch.set(incomingDocRef, {
+    callId,
+    callerId,
+    callerName,
+    createdAt: serverTimestamp(),
+  });
+  
+  await batch.commit();
 
-    return callId;
+  return callId;
 }
 
 
@@ -173,15 +180,4 @@ export function updateCallStatus(db: Firestore, callId: string, status: CallStat
         errorEmitter.emit('permission-error', permissionError);
         throw serverError;
       });
-}
-
-export async function createDailyRoom(functions: Functions, callId: string) {
-  const fn = httpsCallable(functions, "createDailyRoom");
-  try {
-    const res = await fn({ callId });
-    return res.data as { roomUrl: string };
-  } catch(error) {
-    console.error("Failed to create Daily room:", error);
-    throw error;
-  }
 }

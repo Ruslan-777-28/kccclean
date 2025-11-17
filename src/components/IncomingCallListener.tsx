@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { updateCallStatus, getUserProfile } from "@/lib/firestore";
-import type { Call, UserPublic } from "@/lib/types";
+import { updateCallStatus } from "@/lib/firestore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,8 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { collection, deleteDoc, doc, onSnapshot, query, where } from "firebase/firestore";
+import { deleteDoc, doc, onSnapshot } from "firebase/firestore";
 
 type IncomingCallData = {
   callId: string;
@@ -47,15 +45,19 @@ export default function IncomingCallListener() {
 
   const clearIncomingDoc = async () => {
     if (!db || !user) return;
-    await deleteDoc(doc(db, "incoming", user.uid));
+    try {
+        await deleteDoc(doc(db, "incoming", user.uid));
+    } catch (error) {
+        console.error("Failed to clear incoming call document:", error);
+    }
     setIncomingCall(null);
   }
 
   const handleAccept = async () => {
     if (!incomingCall || !db) return;
     await updateCallStatus(db, incomingCall.callId, "accepted");
-    router.push(`/call/${incomingCall.callId}`);
     await clearIncomingDoc();
+    router.push(`/call/${incomingCall.callId}`);
   };
 
   const handleDecline = async () => {
@@ -64,19 +66,23 @@ export default function IncomingCallListener() {
     await clearIncomingDoc();
   };
 
+  if (!incomingCall) {
+    return null;
+  }
+
   return (
     <AlertDialog open={!!incomingCall}>
       <AlertDialogContent>
         <AlertDialogHeader className="items-center text-center">
-          <AlertDialogTitle className="font-headline text-2xl">Вхідний дзвінок</AlertDialogTitle>
+          <AlertDialogTitle className="font-headline text-2xl">Incoming Call</AlertDialogTitle>
           <AlertDialogDescription>
-            Вам телефонує{" "}
+            You have a call from{" "}
             <span className="font-bold text-primary">{incomingCall?.callerName || "Unknown"}</span>.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="sm:justify-center">
-          <AlertDialogAction onClick={handleAccept} className="bg-green-600 hover:bg-green-700">Прийняти</AlertDialogAction>
-          <AlertDialogCancel onClick={handleDecline} className="bg-red-600 hover:bg-red-700 text-white">Відхилити</AlertDialogCancel>
+          <AlertDialogAction onClick={handleAccept} className="bg-green-600 hover:bg-green-700">Accept</AlertDialogAction>
+          <AlertDialogCancel onClick={handleDecline} className="bg-red-600 hover:bg-red-700 text-white">Decline</AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

@@ -31,9 +31,9 @@ service cloud.firestore {
       allow read: if request.auth != null 
                   && (request.auth.uid == resource.data.callerId || request.auth.uid == resource.data.calleeId);
 
-      // The caller and callee can update the call status
+      // The caller and callee can update the call status and roomUrl
       allow update: if request.auth != null
-                    && (request.auth.uid == resource.data.callerId || request.auth.uid == resource.data.calleeId)
+                    && (request.auth.uid == resource.data.callerId || request.auth.uid == resource.data.calleeId || exists(/databases/$(database)/documents/functions_admins/$(request.auth.uid)))
                     && (request.resource.data.status in ["ringing", "accepted", "ended", "declined"]);
     }
     

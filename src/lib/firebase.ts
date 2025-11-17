@@ -20,7 +20,8 @@ function getClientServices() {
         const auth = getAuth(app);
         const db = getFirestore(app);
         const storage = getStorage(app);
-        const functions = getFunctions(app);
+        // Region can be specified here if needed, e.g., 'us-central1'
+        const functions = getFunctions(app); 
         return { app, auth, db, storage, functions };
     }
     // Return null or stubs for server-side rendering
