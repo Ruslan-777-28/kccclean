@@ -32,13 +32,20 @@ export default function CallPage({ params }: { params: { callId: string } }) {
 
     const unsub = onSnapshot(callDocRef, (snap) => {
       if (!snap.exists()) {
-        setError("Call not found. You will be redirected.");
-        setLoading(false);
-        setTimeout(() => router.push('/'), 3000);
+        // This might happen briefly before the call document is created.
+        // We'll just wait. If it persists, it's an issue.
         return;
       }
       const data = snap.data();
 
+      // Check if user is part of the call before proceeding
+      if (user && data.callerId !== user.uid && data.calleeId !== user.uid) {
+        setError("You are not a participant in this call.");
+        setLoading(false);
+        setTimeout(() => router.push('/'), 3000);
+        return;
+      }
+      
       if (data.roomUrl) {
         setRoomUrl(data.roomUrl);
         setLoading(false);
@@ -51,31 +58,33 @@ export default function CallPage({ params }: { params: { callId: string } }) {
         }
       }
     }, (err) => {
-        console.error("Firestore snapshot error:", err);
-        setError("Failed to listen to call data.");
-        setLoading(false);
+        // This is where we catch the permission error initially
+        if (err.code === 'permission-denied') {
+            console.log("Waiting for call document to be created with participant details...");
+            // It's expected to get this error if the caller/callee IDs aren't set yet.
+            // We can just wait for the document to be updated.
+        } else {
+            console.error("Firestore snapshot error:", err);
+            setError("Failed to listen to call data. You may not have permission.");
+            setLoading(false);
+        }
     });
 
     return () => unsub();
-  }, [db, params.callId, router, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db, params.callId, router, user, toast]);
 
   // ---------- 2. SETUP DAILY IFRAME ----------
   useEffect(() => {
-    if (!roomUrl || !iframeRef.current) return;
-    if (callRef.current) callRef.current.destroy();
+    if (!roomUrl || !iframeRef.current || callRef.current) return;
 
-    const call = DailyIframe.createCallObject({ url: roomUrl });
+    const call = DailyIframe.createCallObject();
     callRef.current = call;
-
-    const handleLeftMeeting = () => {
-      router.push("/");
-    };
-    call.on('left-meeting', handleLeftMeeting);
-
-    call.join({ showLeaveButton: false, showFullscreenButton: true })
+    
+    call.join({ url: roomUrl, showLeaveButton: false, showFullscreenButton: true })
       .then(() => {
-        if (iframeRef.current) {
-          call.iframe()?.style.setProperty('display', 'block');
+        if (iframeRef.current && call.iframe()) {
+          iframeRef.current.innerHTML = ''; // Clear any previous content/loaders
           iframeRef.current.appendChild(call.iframe()!);
         }
       })
@@ -83,12 +92,20 @@ export default function CallPage({ params }: { params: { callId: string } }) {
         console.error("Daily join error:", err)
         setError("Could not join the video room.");
       });
+      
+    const handleLeftMeeting = () => {
+      router.push("/");
+    };
+    call.on('left-meeting', handleLeftMeeting);
 
     return () => {
       call.off('left-meeting', handleLeftMeeting);
-      call.leave().then(() => call.destroy()).catch(() => call.destroy());
-      callRef.current = null;
+      if (callRef.current) {
+        callRef.current.leave().then(() => callRef.current?.destroy());
+        callRef.current = null;
+      }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomUrl, router]);
 
   // ---------- 3. END CALL ----------
@@ -96,8 +113,12 @@ export default function CallPage({ params }: { params: { callId: string } }) {
     if (callRef.current) {
       await callRef.current.leave();
     }
-    if (db && updateStatus) {
-       await updateDoc(doc(db, "calls", params.callId), { status: "ended" });
+    if (db && updateStatus && params.callId) {
+       try {
+         await updateDoc(doc(db, "calls", params.callId), { status: "ended" });
+       } catch (e) {
+         console.error("Failed to update call status:", e);
+       }
     }
     router.push("/");
   };
@@ -128,7 +149,7 @@ export default function CallPage({ params }: { params: { callId: string } }) {
             <p className="mt-4">Waiting for room to be created...</p>
           </div>
         )}
-        <div ref={iframeRef} className="w-full h-full" style={{ display: loading ? 'none' : 'block' }}/>
+        <div ref={iframeRef} className="w-full h-full" />
       </div>
     </div>
   );
