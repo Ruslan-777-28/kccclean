@@ -15,15 +15,35 @@ import {
   type Firestore,
 } from 'firebase/firestore';
 import type { UserPublic, Call, CallStatus, UserPrivate } from './types';
+import { errorEmitter } from './error-emitter';
+import { FirestorePermissionError } from './errors';
 
 // --- User Functions ---
 
 export async function createUserPublicProfile(db: Firestore, uid: string, data: Omit<UserPublic, 'uid'>): Promise<void> {
-  await setDoc(doc(db, 'users_public', uid), { ...data, uid });
+  const docRef = doc(db, 'users_public', uid);
+  setDoc(docRef, { ...data, uid })
+    .catch((serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'create',
+        requestResourceData: { ...data, uid },
+      }, serverError);
+      errorEmitter.emit('permission-error', permissionError);
+    });
 }
 
 export async function createUserPrivateProfile(db: Firestore, uid: string, data: Omit<UserPrivate, 'uid' | 'email'> & { email: string }): Promise<void> {
-  await setDoc(doc(db, 'users_private', uid), { ...data, uid });
+  const docRef = doc(db, 'users_private', uid);
+  setDoc(docRef, { ...data, uid })
+   .catch((serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: docRef.path,
+        operation: 'create',
+        requestResourceData: { ...data, uid },
+      }, serverError);
+      errorEmitter.emit('permission-error', permissionError);
+    });
 }
 
 export async function createUserProfile(db: Firestore, uid: string, data: { displayName: string, email: string, photoURL: string }): Promise<void> {
@@ -61,7 +81,15 @@ export async function getAllUsers(db: Firestore): Promise<UserPublic[]> {
 
 export async function updateUserAvatar(db: Firestore, uid: string, url: string): Promise<void> {
     const userDocRef = doc(db, 'users_public', uid);
-    await updateDoc(userDocRef, { photoURL: url });
+    updateDoc(userDocRef, { photoURL: url })
+      .catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: userDocRef.path,
+          operation: 'update',
+          requestResourceData: { photoURL: url },
+        }, serverError);
+        errorEmitter.emit('permission-error', permissionError);
+      });
 }
 
 
@@ -69,14 +97,22 @@ export async function updateUserAvatar(db: Firestore, uid: string, url: string):
 
 export async function createCall(db: Firestore, callerId: string, calleeId: string): Promise<string> {
   const callsCollection = collection(db, 'calls');
-  const callDoc = await addDoc(callsCollection, {
+  const callDocRef = await addDoc(callsCollection, {
     callerId,
     calleeId,
     status: 'ringing',
     roomUrl: null,
     createdAt: serverTimestamp(),
+  }).catch((serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: callsCollection.path,
+        operation: 'create',
+        requestResourceData: { callerId, calleeId, status: 'ringing' },
+      }, serverError);
+      errorEmitter.emit('permission-error', permissionError);
+      throw permissionError;
   });
-  return callDoc.id;
+  return callDocRef.id;
 }
 
 export function listenToCall(db: Firestore, callId: string, callback: (call: Call | null) => void): Unsubscribe {
@@ -87,12 +123,26 @@ export function listenToCall(db: Firestore, callId: string, callback: (call: Cal
     } else {
       callback(null);
     }
+  }, (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: callDocRef.path,
+        operation: 'get',
+      }, serverError);
+      errorEmitter.emit('permission-error', permissionError);
   });
 }
 
 export async function updateCallStatus(db: Firestore, callId: string, status: CallStatus) {
   const callDocRef = doc(db, 'calls', callId);
-  await updateDoc(callDocRef, { status });
+  updateDoc(callDocRef, { status })
+    .catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: callDocRef.path,
+          operation: 'update',
+          requestResourceData: { status },
+        }, serverError);
+        errorEmitter.emit('permission-error', permissionError);
+      });
 }
 
 export function listenToIncomingCalls(db: Firestore, userId: string, callback: (calls: Call[]) => void): Unsubscribe {
@@ -107,5 +157,11 @@ export function listenToIncomingCalls(db: Firestore, userId: string, callback: (
   return onSnapshot(q, (snapshot) => {
     const calls = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Call));
     callback(calls);
+  }, (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: callsCollection.path,
+        operation: 'list',
+      }, serverError);
+      errorEmitter.emit('permission-error', permissionError);
   });
 }

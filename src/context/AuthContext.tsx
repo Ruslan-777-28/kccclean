@@ -6,6 +6,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { getClientServices, type Auth, type Firestore, type FirebaseStorage, type FirebaseApp } from '@/lib/firebase';
 import { UserPublic } from '@/lib/types';
 import IncomingCallListener from '@/components/IncomingCallListener';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface FirebaseServices {
   app: FirebaseApp | null;
@@ -70,6 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider value={value}>
+      <FirebaseErrorListener />
       {loading ? <div className="flex h-screen items-center justify-center"><p>Loading...</p></div> : children}
       {user && userProfile && <IncomingCallListener />}
     </AuthContext.Provider>
