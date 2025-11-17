@@ -62,7 +62,9 @@ export default function CallButton({ calleeId, calleeName, isOnline }: CallButto
       });
 
       // 1) Create calls + incoming documents
+      console.log("🔥 BEFORE createCall");
       const callId = await createCall(db, user.uid, calleeId, userProfile.displayName || "Anonymous Caller");
+      console.log("🔥 AFTER createCall", callId);
 
       // 2) Call Cloud Function to create Daily room
       const createRoom = httpsCallable(funcs, "createDailyRoom");
@@ -72,7 +74,7 @@ export default function CallButton({ calleeId, calleeName, isOnline }: CallButto
       router.push(`/call/${callId}`);
 
     } catch (error: any) {
-      console.error("Call initiation failed:", error);
+      console.error("❌ createCall failed:", error);
       toast({
         variant: "destructive",
         title: "Call Failed",
