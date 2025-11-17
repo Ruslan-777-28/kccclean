@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { getClientServices, type Auth, type Firestore, type FirebaseStorage, type FirebaseApp } from '@/lib/firebase';
+import { getClientServices, type Auth, type Firestore, type FirebaseStorage, type FirebaseApp, type Functions } from '@/lib/firebase';
 import { UserPublic } from '@/lib/types';
 import IncomingCallListener from '@/components/IncomingCallListener';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
@@ -14,6 +14,7 @@ interface FirebaseServices {
   auth: Auth | null;
   db: Firestore | null;
   storage: FirebaseStorage | null;
+  functions: Functions | null;
 }
 
 interface AuthContextType extends FirebaseServices {
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   auth: null,
   db: null,
   storage: null,
+  functions: null,
   user: null,
   userProfile: null,
   loading: true,

@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
 import { getAuth, type Auth } from 'firebase/auth';
 import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
+import { getFunctions, type Functions } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -19,11 +20,12 @@ function getClientServices() {
         const auth = getAuth(app);
         const db = getFirestore(app);
         const storage = getStorage(app);
-        return { app, auth, db, storage };
+        const functions = getFunctions(app);
+        return { app, auth, db, storage, functions };
     }
     // Return null or stubs for server-side rendering
-    return { app: null, auth: null, db: null, storage: null };
+    return { app: null, auth: null, db: null, storage: null, functions: null };
 }
 
 export { getClientServices };
-export type { FirebaseApp, Auth, Firestore, FirebaseStorage };
+export type { FirebaseApp, Auth, Firestore, FirebaseStorage, Functions };

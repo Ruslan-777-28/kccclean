@@ -18,6 +18,7 @@ import {
   type User,
   type Timestamp,
 } from 'firebase/firestore';
+import { httpsCallable, type Functions } from 'firebase/functions';
 import type { UserPublic, Call, CallStatus, UserPrivate } from './types';
 import { errorEmitter } from './error-emitter';
 import { FirestorePermissionError } from './errors';
@@ -169,4 +170,15 @@ export function updateCallStatus(db: Firestore, callId: string, status: CallStat
         errorEmitter.emit('permission-error', permissionError);
         throw serverError;
       });
+}
+
+export async function createDailyRoom(functions: Functions, callId: string) {
+  const fn = httpsCallable(functions, "createDailyRoom");
+  try {
+    const res = await fn({ callId });
+    return res.data as { roomUrl: string };
+  } catch(error) {
+    console.error("Failed to create Daily room:", error);
+    throw error;
+  }
 }
