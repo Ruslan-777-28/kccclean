@@ -1,50 +1,37 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- PUBLIC PROFILES ---
-    match /users_public/{userId} {
-      // Anyone can get a specific user profile if they know the UID
-      allow get: if true;
-      // Only signed-in users can list all users (e.g., for the home page)
-      allow list: if request.auth != null;
-
-      // Only the authenticated owner can write to their public profile
-      allow write: if request.auth != null
-                   && request.auth.uid == userId;
+    // ---------- Users public ----------
+    match /users_public/{uid} {
+      allow read: if true;        // всім дозволено читати
+      allow write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // --- PRIVATE PROFILES ---
-    match /users_private/{userId} {
-      // Only the owner can read/write
-      allow read, write: if request.auth != null
-                        && request.auth.uid == userId;
+    // ---------- Users private ----------
+    match /users_private/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // --- CALLS COLLECTION ---
+    // ---------- Incoming calls ----------
+    match /incoming/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // ---------- Calls ----------
     match /calls/{callId} {
-      // Any authenticated user can create a call
       allow create: if request.auth != null;
 
-      // The caller and callee can read the call document
-      allow read: if request.auth != null 
-                  && (request.auth.uid == resource.data.callerId || request.auth.uid == resource.data.calleeId);
-
-      // The caller and callee can update the call status and roomUrl
-      allow update: if request.auth != null
-                    && (request.auth.uid == resource.data.callerId || request.auth.uid == resource.data.calleeId || exists(/databases/$(database)/documents/functions_admins/$(request.auth.uid)))
-                    && (request.resource.data.status in ["ringing", "accepted", "ended", "declined"]);
+      allow read, update: if request.auth != null
+        && (
+          request.auth.uid == resource.data.callerId ||
+          request.auth.uid == resource.data.calleeId
+        );
     }
-    
-    // --- INCOMING CALL NOTIFICATIONS ---
-    match /incoming/{userId} {
-        // The callee can read their own notification
-        allow read: if request.auth != null && request.auth.uid == userId;
-        // The caller can create a notification for the callee
-        allow create: if request.auth != null;
-        // The callee can delete their notification
-        allow delete: if request.auth != null && request.auth.uid == userId;
+
+    // fallback
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
