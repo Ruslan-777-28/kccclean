@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // USERS
+    // Public user profiles can be read by anyone, but only created and updated by the owner.
+    match /users_public/{userId} {
+      allow read: if true;
+      allow create, update: if isOwner(userId);
+    }
+    
+    // Private user data is only accessible by the owner.
+    match /users_private/{userId} {
+      allow read, create, update: if isOwner(userId);
+    }
+
+    // CALLS
+    // Call documents can be created, read, and updated by authenticated users.
+    // Specific fields like 'status' and 'roomUrl' have validation rules.
+    match /calls/{callId} {
+      allow create: if isSignedIn();
+      allow read: if isSignedIn();
+      allow update: if isSignedIn()
+        && (
+          // Only allow status updates to valid states
+          request.resource.data.status in ["ringing", "accepted", "ended", "declined"] &&
+          // Ensure roomUrl, if set, is a string.
+          (request.resource.data.roomUrl == null || request.resource.data.roomUrl is string) &&
+          // Ensure callerId and calleeId are not changed
+          request.resource.data.callerId == resource.data.callerId &&
+          request.resource.data.calleeId == resource.data.calleeId
+        );
+    }
+  }
+}
