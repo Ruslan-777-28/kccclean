@@ -22,9 +22,11 @@ export default function CallPage({ params }: { params: { callId: string } }) {
 
   // ---------- 1. SUBSCRIBE TO CALL DOCUMENT ----------
   useEffect(() => {
-    if (!db || !params.callId) {
-      setError("Database connection not available or Call ID is missing.");
-      setLoading(false);
+    if (!db || !params.callId || !user) {
+      if (!user) {
+        setError("Please log in to join a call.");
+        setLoading(false);
+      }
       return;
     }
 
@@ -32,8 +34,9 @@ export default function CallPage({ params }: { params: { callId: string } }) {
 
     const unsub = onSnapshot(callDocRef, (snap) => {
       if (!snap.exists()) {
-        // This might happen briefly before the call document is created.
-        // We'll just wait. If it persists, it's an issue.
+        // This can happen if the page is accessed before the doc is created.
+        // We'll just wait. If it persists, the error handler will eventually time out.
+        console.log("Waiting for call document to be created...");
         return;
       }
       const data = snap.data();
@@ -41,6 +44,11 @@ export default function CallPage({ params }: { params: { callId: string } }) {
       // Check if user is part of the call before proceeding
       if (user && data.callerId !== user.uid && data.calleeId !== user.uid) {
         setError("You are not a participant in this call.");
+        toast({
+          variant: "destructive",
+          title: "Access Denied",
+          description: "You are not a participant in this call.",
+        });
         setLoading(false);
         setTimeout(() => router.push('/'), 3000);
         return;
@@ -49,6 +57,7 @@ export default function CallPage({ params }: { params: { callId: string } }) {
       if (data.roomUrl) {
         setRoomUrl(data.roomUrl);
         setLoading(false);
+        setError(null); // Clear previous errors once we get the URL
       }
       
       if (data.status === 'ended' || data.status === 'declined') {
@@ -60,17 +69,34 @@ export default function CallPage({ params }: { params: { callId: string } }) {
     }, (err) => {
         // This is where we catch the permission error initially
         if (err.code === 'permission-denied') {
-            console.log("Waiting for call document to be created with participant details...");
-            // It's expected to get this error if the caller/callee IDs aren't set yet.
-            // We can just wait for the document to be updated.
+            setError("Waiting for call details to be available... If this persists, you may not have access.");
+            // We don't setLoading(false) here, we just show a message and wait.
+            // The listener will retry or a timeout will eventually redirect.
         } else {
             console.error("Firestore snapshot error:", err);
-            setError("Failed to listen to call data. You may not have permission.");
+            setError("Failed to listen to call data.");
             setLoading(false);
         }
     });
+    
+    // Timeout to prevent waiting forever
+    const timeoutId = setTimeout(() => {
+        if (loading && !roomUrl) {
+            setError("Could not join the call. The room may not exist or you don't have permission.");
+            toast({
+                variant: 'destructive',
+                title: 'Failed to Join',
+                description: 'Redirecting to homepage...'
+            })
+            setLoading(false);
+            setTimeout(() => router.push('/'), 3000);
+        }
+    }, 15000); // 15 seconds
 
-    return () => unsub();
+    return () => {
+      unsub();
+      clearTimeout(timeoutId);
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db, params.callId, router, user, toast]);
 
@@ -81,16 +107,23 @@ export default function CallPage({ params }: { params: { callId: string } }) {
     const call = DailyIframe.createCallObject();
     callRef.current = call;
     
+    // Clear the container before appending a new iframe
+    iframeRef.current.innerHTML = ''; 
+
     call.join({ url: roomUrl, showLeaveButton: false, showFullscreenButton: true })
       .then(() => {
         if (iframeRef.current && call.iframe()) {
-          iframeRef.current.innerHTML = ''; // Clear any previous content/loaders
           iframeRef.current.appendChild(call.iframe()!);
         }
       })
       .catch((err) => {
-        console.error("Daily join error:", err)
+        console.error("Daily join error:", err);
         setError("Could not join the video room.");
+        toast({
+          variant: "destructive",
+          title: "Video Error",
+          description: "Failed to connect to the video service.",
+        });
       });
       
     const handleLeftMeeting = () => {
@@ -101,7 +134,7 @@ export default function CallPage({ params }: { params: { callId: string } }) {
     return () => {
       call.off('left-meeting', handleLeftMeeting);
       if (callRef.current) {
-        callRef.current.leave().then(() => callRef.current?.destroy());
+        callRef.current.destroy();
         callRef.current = null;
       }
     };
@@ -111,7 +144,7 @@ export default function CallPage({ params }: { params: { callId: string } }) {
   // ---------- 3. END CALL ----------
   const handleLeave = async (updateStatus = true) => {
     if (callRef.current) {
-      await callRef.current.leave();
+       await callRef.current.leave();
     }
     if (db && updateStatus && params.callId) {
        try {
@@ -123,12 +156,21 @@ export default function CallPage({ params }: { params: { callId: string } }) {
     router.push("/");
   };
   
-  if (error) {
+  if (loading) {
+     return (
+        <div className="w-full h-screen flex flex-col items-center justify-center bg-black text-white p-4">
+            <Loader2 className="w-10 h-10 animate-spin" />
+            <p className="mt-4 text-lg">{error || 'Connecting to call...'}</p>
+        </div>
+     )
+  }
+  
+  if (error && !loading) {
      return (
       <div className="w-full h-screen flex flex-col items-center justify-center bg-black text-white p-4">
         <h1 className="text-2xl font-bold text-red-500 mb-4">An Error Occurred</h1>
-        <p className="text-lg mb-6">{error}</p>
-        <Button onClick={() => router.push('/')}>Go to Homepage</Button>
+        <p className="text-lg mb-6 text-center">{error}</p>
+        <Button onClick={() => router.push('/')} variant="secondary">Go to Homepage</Button>
       </div>
     );
   }
@@ -143,7 +185,7 @@ export default function CallPage({ params }: { params: { callId: string } }) {
       </div>
 
       <div className="flex-1 relative">
-        {(loading || !roomUrl) && (
+        {!roomUrl && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black text-white">
             <Loader2 className="w-10 h-10 animate-spin" />
             <p className="mt-4">Waiting for room to be created...</p>
