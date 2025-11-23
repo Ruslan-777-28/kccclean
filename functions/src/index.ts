@@ -1,93 +1,42 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
-import * as functions from "firebase-functions";
+import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
-import * as jwt from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
+admin.initializeApp();
 
-// -----------------------------
-//  LOAD CONFIG
-// -----------------------------
-const VIDEOSDK_API_KEY = functions.config().videosdk.api_key as string;
-const VIDEOSDK_SECRET = functions.config().videosdk.secret as string;
-
-if (!VIDEOSDK_API_KEY || !VIDEOSDK_SECRET) {
-  console.error("❌ VideoSDK keys are missing in functions:config");
-}
-
-// -----------------------------
-//  UTIL: Generate a VideoSDK JWT Token (for client)
-// -----------------------------
-function generateToken() {
-  return jwt.sign(
-    {
-      apikey: VIDEOSDK_API_KEY,
-      permissions: ["allow_join", "allow_mod"], // allow joining + moderator
-      version: 2,
-      roles: ["rtc"], // client SDK token
-    },
-    VIDEOSDK_SECRET,
-    {
-      expiresIn: "120m",
-      algorithm: "HS256",
-    }
-  );
-}
-
-// -----------------------------
-//  1) Callable Function (PRODUCTION)
-//     Requires Firebase Auth
-// -----------------------------
-export const getVideoSDKToken = functions.https.onCall((data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
-      "unauthenticated",
-      "Authentication required"
-    );
-  }
-
-  try {
-    const payload = {
-      apikey: VIDEOSDK_API_KEY,
-      permissions: ["allow_join", "allow_mod"],
-      version: 2,
-      role: "server", // Server role for creating rooms
-    };
-
-    const token = jwt.sign(payload, VIDEOSDK_SECRET, {
-      expiresIn: "10m",
-      issuer: "https://api.videosdk.live",
-    });
-
-    return { token };
-  } catch (err) {
-    console.error("Error creating VideoSDK JWT:", err);
-    throw new functions.https.HttpsError("internal", "TOKEN_CREATION_FAILED");
-  }
-});
-
-
-// -----------------------------
-//  2) HTTP Function (TEST / CURL)
-//     No Auth Required
-// -----------------------------
 export const getVideoSDKTokenHttp = functions.https.onRequest(
-  (req, res) => {
+  async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Headers", "Content-Type");
+
+    if (req.method === "OPTIONS") {
+      return res.status(204).send("");
+    }
+
     try {
-      const token = generateToken();
-      res.status(200).send({ token });
-    } catch (error: any) {
-      console.error("HTTP token error:", error);
-      res.status(500).send({ error: error.message });
+      const apiKey = functions.config().videosdk.api_key;
+      const secret = functions.config().videosdk.secret;
+
+      if (!apiKey || !secret) {
+        return res.status(500).json({ error: "Missing VideoSDK keys" });
+      }
+
+      const payload = {
+        apikey: apiKey,
+        permissions: ["allow_join", "allow_mod"],
+        // ГОЛОВНЕ:
+        role: "server",
+      };
+
+      const token = jwt.sign(payload, secret, {
+        expiresIn: "24h",
+        algorithm: "HS256",
+      });
+
+      return res.json({ token });
+    } catch (err) {
+      console.error("VideoSDK token error:", err);
+      return res.status(500).json({ error: "Failed to generate token" });
     }
   }
 );
-
-// -----------------------------
-// OPTIONAL: Health Check
-// -----------------------------
-export const ping = functions.https.onRequest((req, res) => {
-  res.status(200).send("pong");
-});
