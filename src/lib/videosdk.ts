@@ -1,27 +1,18 @@
 "use client";
 
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { getClientServices } from "@/lib/firebase";
-
-/**
- * 1) Fetch VideoSDK token via Firebase Callable Function.
- *    This is our secure backend-generated JWT.
- */
+// Функція отримання токена з твоєї Cloud Function
 export async function fetchVideoSDKToken(): Promise<string> {
+  const url =
+    "https://us-central1-clin-a278c.cloudfunctions.net/getVideoSDKTokenHttp";
+
   try {
-    const { functions } = getClientServices();
-    if (!functions) throw new Error("Firebase Functions is not initialized.");
+    const response = await fetch(url, { method: "GET" });
 
-    const callable = httpsCallable(functions, "getVideoSDKToken");
-
-    const response = await callable();
-    const data = response.data as any;
-
-    if (!data || !data.token) {
-      console.error("VideoSDK token missing in response:", data);
-      throw new Error("No VideoSDK token returned from backend");
+    if (!response.ok) {
+      throw new Error("Failed to fetch VideoSDK token");
     }
 
+    const data = await response.json();
     return data.token;
   } catch (err) {
     console.error("Failed to fetch VideoSDK token:", err);
@@ -29,22 +20,27 @@ export async function fetchVideoSDKToken(): Promise<string> {
   }
 }
 
-/**
- * 2) Create VideoSDK Room via REST API.
- *    Requires JWT token from fetchVideoSDKToken().
- */
-export async function createVideoSDKRoom(token: string): Promise<string> {
-  const endpoint = "https://api.videosdk.live/v2/rooms";
+// -------------------------
+// СТВОРЕННЯ КІМНАТИ (v1 API)
+// -------------------------
+
+export async function createVideoSDKRoom(): Promise<string> {
+  const token = await fetchVideoSDKToken();
 
   try {
-    const response = await fetch(endpoint, {
+    const response = await fetch("https://api.videosdk.live/v1/rooms", {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        // VideoSDK expects raw token, not "Bearer"
         Authorization: token,
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({
+        region: "us",
+        autoCloseConfig: {
+          enabled: true,
+          timeout: 300,
+        },
+      }),
     });
 
     if (!response.ok) {
@@ -53,16 +49,14 @@ export async function createVideoSDKRoom(token: string): Promise<string> {
       throw new Error("VideoSDK room creation failed");
     }
 
-    const json = await response.json();
-
-    if (!json.roomId) {
-      console.error("VideoSDK: no roomId returned:", json);
-      throw new Error("VideoSDK did not return roomId");
+    const data = await response.json();
+    if (!data.roomId) {
+        console.error("VideoSDK: no roomId returned:", data);
+        throw new Error("VideoSDK did not return roomId");
     }
-
-    return json.roomId as string;
+    return data.roomId;
   } catch (err) {
-    console.error("VideoSDK create room error:", err);
-    throw new Error("Unable to create VideoSDK room");
+      console.error("VideoSDK create room error:", err);
+      throw new Error("Unable to create VideoSDK room");
   }
 }

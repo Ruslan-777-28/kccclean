@@ -1,75 +1,55 @@
 "use client";
 
 import {
-  addDoc,
-  collection,
   doc,
-  serverTimestamp,
   updateDoc,
+  serverTimestamp,
+  setDoc,
+  getDoc,
+  addDoc,
+  collection
 } from "firebase/firestore";
-import { getClientServices } from "@/lib/firebase";
-import { fetchVideoSDKToken, createVideoSDKRoom } from "@/lib/videosdk";
+import { createVideoSDKRoom } from "./videosdk";
+import { getClientServices } from "./firebase";
 
 const { db } = getClientServices();
 
-/**
- * Firestore Call Document type:
- * {
- *   id: string;
- *   callerId: string;
- *   calleeId: string;
- *   status: "ringing" | "accepted" | "in-progress" | "ended" | "declined";
- *   roomId?: string;
- *   createdAt?: Timestamp;
- *   updatedAt?: Timestamp;
- * }
- */
-
-
-/* --------------------------------------------------------
- * 1) startCall()
- * Caller ініціює виклик → створюється Firestore документ
- * ------------------------------------------------------*/
+// -----------------------------
+// ІНІЦІАЦІЯ ВИКЛИКУ
+// -----------------------------
 export async function startCall(callerId: string, calleeId: string) {
-  if (!db) throw new Error("Firestore is not initialized");
-  try {
-    const callsRef = collection(db, "calls");
+  if (!db) throw new Error("Firestore not initialized");
 
-    const callDoc = await addDoc(callsRef, {
-      callerId,
-      calleeId,
-      status: "ringing",
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+  const callDocRef = await addDoc(collection(db, "calls"), {
+    callerId,
+    calleeId,
+    status: "ringing",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    roomId: null,
+  });
 
-    return callDoc.id;
-  } catch (err) {
-    console.error("startCall error:", err);
-    throw new Error("Failed to start call");
-  }
+  return callDocRef.id;
 }
 
-
-/* --------------------------------------------------------
- * 2) acceptCall()
- * Callee приймає виклик:
- *  - отримує VideoSDK токен
- *  - створює VideoSDK room
- *  - записує roomId у Firestore
- * ------------------------------------------------------*/
+// -----------------------------
+// ПРИЙНЯТТЯ ВИКЛИКУ
+// -----------------------------
 export async function acceptCall(callId: string) {
-    if (!db) throw new Error("Firestore is not initialized");
+  if (!db) throw new Error("Firestore not initialized");
+
   try {
     const callRef = doc(db, "calls", callId);
+    const snap = await getDoc(callRef);
 
-    // 1. Отримуємо токен
-    const token = await fetchVideoSDKToken();
+    if (!snap.exists()) {
+      throw new Error("Call does not exist");
+    }
 
-    // 2. Створюємо кімнату VideoSDK
-    const roomId = await createVideoSDKRoom(token);
+    // Створити кімнату VideoSDK
+    const roomId = await createVideoSDKRoom();
 
-    // 3. Оновлюємо Firestore документ
+    // Оновити статус
     await updateDoc(callRef, {
       status: "accepted",
       roomId,
@@ -83,34 +63,29 @@ export async function acceptCall(callId: string) {
   }
 }
 
-
-/* --------------------------------------------------------
- * 3) declineCall()
- * Callee відхиляє виклик
- * ------------------------------------------------------*/
+// -----------------------------
+// ВІДХИЛЕННЯ ВИКЛИКУ
+// -----------------------------
 export async function declineCall(callId: string) {
-    if (!db) throw new Error("Firestore is not initialized");
-  try {
-    const callRef = doc(db, "calls", callId);
-
-    await updateDoc(callRef, {
-      status: "declined",
-      updatedAt: serverTimestamp(),
-    });
-  } catch (err) {
-    console.error("declineCall error:", err);
-    throw new Error("Failed to decline call");
-  }
+    if (!db) throw new Error("Firestore not initialized");
+    try {
+        const callRef = doc(db, "calls", callId);
+        await updateDoc(callRef, {
+            status: "declined",
+            updatedAt: serverTimestamp(),
+        });
+    } catch (err) {
+        console.error("declineCall error:", err);
+        throw new Error("Failed to decline call");
+    }
 }
 
 
-/* --------------------------------------------------------
- * 4) endCall()
- * (не обов’язково, але корисно)
- * Завершує дзвінок з будь-якої сторони
- * ------------------------------------------------------*/
+// -----------------------------
+// ЗАВЕРШЕННЯ ВИКЛИКУ
+// -----------------------------
 export async function endCall(callId: string) {
-    if (!db) throw new Error("Firestore is not initialized");
+  if (!db) throw new Error("Firestore not initialized");
   try {
     const callRef = doc(db, "calls", callId);
 
@@ -120,6 +95,5 @@ export async function endCall(callId: string) {
     });
   } catch (err) {
     console.error("endCall error:", err);
-    throw new Error("Failed to end call");
   }
 }

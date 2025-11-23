@@ -1,7 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ping = exports.getVideoSDKTokenHttp = exports.getVideoSDKToken = void 0;
-const https_1 = require("firebase-functions/v2/https");
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const jwt = require("jsonwebtoken");
@@ -34,9 +33,9 @@ function generateToken() {
 //  1) Callable Function (PRODUCTION)
 //     Requires Firebase Auth
 // -----------------------------
-exports.getVideoSDKToken = (0, https_1.onCall)({ region: "us-central1" }, async (request) => {
-    if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "Authentication required");
+exports.getVideoSDKToken = functions.https.onCall((data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Authentication required");
     }
     try {
         const payload = {
@@ -53,7 +52,7 @@ exports.getVideoSDKToken = (0, https_1.onCall)({ region: "us-central1" }, async 
     }
     catch (err) {
         console.error("Error creating VideoSDK JWT:", err);
-        throw new https_1.HttpsError("internal", "TOKEN_CREATION_FAILED");
+        throw new functions.https.HttpsError("internal", "TOKEN_CREATION_FAILED");
     }
 });
 // -----------------------------
