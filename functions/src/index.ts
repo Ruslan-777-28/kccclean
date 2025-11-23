@@ -40,9 +40,9 @@ function generateToken() {
 //  1) Callable Function (PRODUCTION)
 //     Requires Firebase Auth
 // -----------------------------
-export const getVideoSDKToken = onCall({ region: "us-central1" }, async (request) => {
-  if (!request.auth) {
-    throw new HttpsError(
+export const getVideoSDKToken = functions.https.onCall((data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
       "unauthenticated",
       "Authentication required"
     );
@@ -64,7 +64,7 @@ export const getVideoSDKToken = onCall({ region: "us-central1" }, async (request
     return { token };
   } catch (err) {
     console.error("Error creating VideoSDK JWT:", err);
-    throw new HttpsError("internal", "TOKEN_CREATION_FAILED");
+    throw new functions.https.HttpsError("internal", "TOKEN_CREATION_FAILED");
   }
 });
 
