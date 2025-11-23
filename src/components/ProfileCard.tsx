@@ -1,11 +1,12 @@
 import { UserPublic } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import CallButton from "./CallButton";
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
+import CallButton from "./CallButton";
+import { useAuth } from "@/context/AuthContext";
 
 type ProfileCardProps = {
   user: UserPublic;
@@ -16,6 +17,8 @@ type ProfileCardProps = {
 
 export default function ProfileCard({ user, showBio = false, onAvatarClick, isUploading = false }: ProfileCardProps) {
   const isEditable = !!onAvatarClick;
+  const { user: authUser } = useAuth();
+  const isOwnProfile = authUser?.uid === user.uid;
 
   return (
     <Card className="text-center shadow-lg hover:shadow-xl transition-shadow duration-300">
@@ -54,7 +57,9 @@ export default function ProfileCard({ user, showBio = false, onAvatarClick, isUp
            <p className="text-muted-foreground">A passionate member of the ConnectNow community. Ready to connect and collaborate!</p>
         )}
         <div className="flex flex-col gap-2">
-            <CallButton calleeId={user.uid} calleeName={user.displayName} isOnline={user.isOnline ?? false} />
+            {!showBio && !isOwnProfile && authUser && (
+                <CallButton callerId={authUser.uid} calleeId={user.uid} />
+            )}
             {!showBio && (
                 <Button asChild variant="outline">
                     <Link href={`/profile/${user.uid}`}>View Profile</Link>

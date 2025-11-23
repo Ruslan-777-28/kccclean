@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { uploadAvatar } from '@/lib/storage';
 import { Loader2 } from 'lucide-react';
+import CallButton from '@/components/CallButton';
 
 export default function ProfilePage() {
   const params = useParams();
@@ -88,6 +89,11 @@ export default function ProfilePage() {
           onAvatarClick={isOwnProfile ? handleAvatarClick : undefined}
           isUploading={uploading}
         />
+         {!isOwnProfile && authUser && (
+            <div className="mt-4">
+              <CallButton callerId={authUser.uid} calleeId={user.uid} />
+            </div>
+         )}
         {isOwnProfile && (
           <input
             type="file"

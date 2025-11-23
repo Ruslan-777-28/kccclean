@@ -1,7 +1,6 @@
 
 "use client";
 
-import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { Toaster } from "@/components/ui/toaster";
