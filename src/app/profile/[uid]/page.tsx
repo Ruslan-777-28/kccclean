@@ -90,7 +90,7 @@ export default function ProfilePage() {
           isUploading={uploading}
         />
          {!isOwnProfile && authUser && (
-            <div className="mt-4">
+            <div className="mt-4 flex justify-center">
               <CallButton callerId={authUser.uid} calleeId={user.uid} />
             </div>
          )}

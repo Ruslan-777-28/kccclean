@@ -9,8 +9,7 @@ import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function HomePage() {
-  const { user } = useAuth();
-  const { db } = useAuth();
+  const { user, db } = useAuth();
   const [users, setUsers] = useState<UserPublic[]>([]);
 
   useEffect(() => {
