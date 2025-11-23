@@ -3,6 +3,7 @@
 import { acceptCall, declineCall } from "@/lib/calls";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 interface IncomingCallModalProps {
   callId: string;
@@ -17,17 +18,23 @@ export default function IncomingCallModal({
 }: IncomingCallModalProps) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { toast } = useToast();
 
   const handleAccept = async () => {
     try {
       setLoading(true);
-      const roomId = await acceptCall(callId);
+      await acceptCall(callId);
       onClose();
 
-      // 🔥 Переходимо в кімнату
+      // 🔥 Переходимо в кімнату за callId, а не roomId
       router.push(`/call/${callId}`);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Accept failed:", err);
+      toast({
+        variant: "destructive",
+        title: "Failed to accept call",
+        description: err.message,
+      });
       setLoading(false);
     }
   };
@@ -36,8 +43,13 @@ export default function IncomingCallModal({
     try {
       await declineCall(callId);
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Decline error:", err);
+       toast({
+        variant: "destructive",
+        title: "Failed to decline call",
+        description: err.message,
+      });
     }
   };
 

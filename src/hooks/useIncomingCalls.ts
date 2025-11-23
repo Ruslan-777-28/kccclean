@@ -1,62 +1,55 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { onSnapshot, collection, query, where, orderBy, limit } from "firebase/firestore";
+import { collection, onSnapshot, query, where, limit } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import type { Call } from "@/lib/types";
 import { acceptCall, declineCall } from "@/lib/calls";
 
-export function useIncomingCalls() {
-  const { user, db } = useAuth();
+export function useIncomingCalls(userId: string | null) {
+  const { db } = useAuth();
   const [incomingCall, setIncomingCall] = useState<Call | null>(null);
 
   useEffect(() => {
-    if (!user || !db) return;
+    if (!userId || !db) return;
 
     const callsRef = collection(db, "calls");
-
     const q = query(
       callsRef,
-      where("calleeId", "==", user.uid),
+      where("calleeId", "==", userId),
       where("status", "==", "ringing"),
-      // orderBy("createdAt", "desc"), // Removed to prevent index error
       limit(1)
     );
 
-    const unsub = onSnapshot(q, (snap) => {
-      if (snap.empty) {
+    const unsub = onSnapshot(q, (snapshot) => {
+        if (snapshot.empty) {
+          setIncomingCall(null);
+          return;
+        }
+        
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === "added") {
+            const doc = change.doc;
+            const data = { id: doc.id, ...doc.data() } as Call;
+            setIncomingCall(data);
+          }
+           if (change.type === "removed") {
+            setIncomingCall(null);
+          }
+        });
+      },
+      (error) => {
+        console.error("Error listening to incoming calls:", error);
         setIncomingCall(null);
-        return;
       }
-
-      const doc = snap.docs[0];
-      const data = { id: doc.id, ...doc.data() } as Call;
-
-      // Add callerName if it exists on the document
-      if (doc.data().callerName) {
-        data.callerName = doc.data().callerName;
-      }
-
-      setIncomingCall(data);
-    });
+    );
 
     return () => unsub();
-  }, [user, db]);
+  }, [userId, db]);
 
-  async function accept() {
-    if (!incomingCall) return;
-    await acceptCall(incomingCall.id);
-  }
-
-  async function decline() {
-    if (!incomingCall) return;
-    await declineCall(incomingCall.id);
+  const clearIncoming = () => {
     setIncomingCall(null);
-  }
-
-  return {
-    incomingCall,
-    accept,
-    decline,
   };
+
+  return { incomingCall, clearIncoming };
 }
