@@ -1,6 +1,6 @@
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import jwt from "jsonwebtoken";
+import * as jwt from "jsonwebtoken";
 
 admin.initializeApp();
 
