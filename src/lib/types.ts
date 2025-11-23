@@ -21,6 +21,7 @@ export interface Call {
   id: string;
   callerId: string;
   calleeId: string;
+  callerName: string;
   status: CallStatus;
   roomId?: string; // VideoSDK roomId (xxx-yyy-zzz)
   createdAt: Timestamp;

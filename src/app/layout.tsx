@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { Toaster } from "@/components/ui/toaster";
 import Header from "@/components/layout/Header";
+import IncomingCallHandler from "@/components/IncomingCallHandler";
 
 export const metadata: Metadata = {
   title: "ConnectNow",
@@ -37,6 +38,7 @@ export default function RootLayout({
             </main>
           </div>
           <Toaster />
+          <IncomingCallHandler />
         </AuthProvider>
       </body>
     </html>

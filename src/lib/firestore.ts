@@ -105,17 +105,16 @@ export async function startCall(db: Firestore, callerId: string, calleeId: strin
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     }
-    const docRef = await addDoc(callsRef, callDoc);
-  
-    // Create incoming call notification for callee
-    const incomingDocRef = doc(db, "incoming", calleeId);
-    await setDoc(incomingDocRef, {
-      callId: docRef.id,
-      callerId,
-      callerName,
-      createdAt: serverTimestamp(),
+    const docRef = await addDoc(callsRef, callDoc).catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: callsRef.path,
+          operation: 'create',
+          requestResourceData: callDoc,
+        }, serverError);
+        errorEmitter.emit('permission-error', permissionError);
+        throw serverError;
     });
-
+  
     return docRef.id;
 }
 
@@ -129,18 +128,37 @@ export async function acceptCall(db: Firestore, callId: string) {
   const roomId = await createVideoSDKRoom(token);
 
   // 3) Update the call document
-  await updateDoc(callRef, {
+  const updateData = {
     status: "accepted",
     roomId,
     updatedAt: serverTimestamp(),
+  };
+
+  await updateDoc(callRef, updateData).catch((serverError) => {
+    const permissionError = new FirestorePermissionError({
+      path: callRef.path,
+      operation: 'update',
+      requestResourceData: updateData,
+    }, serverError);
+    errorEmitter.emit('permission-error', permissionError);
+    throw serverError;
   });
 }
 
 export async function declineCall(db: Firestore, callId: string) {
   const callRef = doc(db, "calls", callId);
-  await updateDoc(callRef, {
+  const updateData = {
     status: "declined",
     updatedAt: serverTimestamp(),
+  };
+  await updateDoc(callRef, updateData).catch((serverError) => {
+    const permissionError = new FirestorePermissionError({
+      path: callRef.path,
+      operation: 'update',
+      requestResourceData: updateData,
+    }, serverError);
+    errorEmitter.emit('permission-error', permissionError);
+    throw serverError;
   });
 }
 
