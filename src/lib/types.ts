@@ -23,7 +23,7 @@ export interface Call {
   calleeId: string;
   callerName: string;
   status: CallStatus;
-  roomId?: string; // VideoSDK roomId (xxx-yyy-zzz)
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  roomId?: string;      // додається коли створюється VideoSDK room
+  createdAt?: any;
+  updatedAt?: any;
 }
