@@ -1,79 +1,66 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
-import Link from "next/link";
-import { UserPublic } from "@/lib/types";
+import { collection, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import CallButton from "@/components/CallButton";
+import { UserPublic } from "@/lib/types";
+import Link from "next/link";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-export default function Home() {
+export default function HomePage() {
+  const { user } = useAuth();
+  const { db } = useAuth();
   const [users, setUsers] = useState<UserPublic[]>([]);
-  const { db, user: currentUser } = useAuth();
 
   useEffect(() => {
     if (!db) return;
 
-    const usersRef = collection(db, "users_public");
-    const q = query(usersRef, orderBy("lastActive", "desc"));
-
-    const unsub = onSnapshot(q, (snapshot) => {
-      const list: UserPublic[] = snapshot.docs
-        .map((doc) => ({ uid: doc.id, ...doc.data() } as UserPublic))
-        .filter((user) => user.uid !== currentUser?.uid); // Exclude current user
+    const unsub = onSnapshot(collection(db, "users_public"), (snapshot) => {
+      const list = snapshot.docs.map((d) => ({ uid: d.id, ...d.data() } as UserPublic));
       setUsers(list);
     });
 
     return () => unsub();
-  }, [db, currentUser]);
+  }, [db]);
+
+  if (!user) {
+    return (
+      <div className="p-6 text-center text-xl">
+        Please sign in to see users.
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-3xl font-bold mb-8 text-primary font-headline">
-        Available Users
-      </h1>
+    <div className="p-6 max-w-xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Users</h1>
 
-      {users.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {users.map((user) => (
-             <Card key={user.uid} className="text-center shadow-lg hover:shadow-xl transition-shadow duration-300 h-full flex flex-col">
-                <CardContent className="p-6 flex-grow flex flex-col items-center">
-                   <Link href={`/profile/${user.uid}`} passHref className="w-full">
-                    <div className="relative mb-4">
-                      <Avatar className="mx-auto h-24 w-24 border-4 border-primary/20">
-                        <AvatarImage src={user.photoURL} alt={user.displayName} data-ai-hint="person portrait" />
-                        <AvatarFallback>{user.displayName.charAt(0).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <span
-                        className={`absolute bottom-1 right-1 block h-4 w-4 rounded-full border-2 border-white ${
-                          user.isOnline ? "bg-green-500" : "bg-gray-400"
-                        }`}
-                        title={user.isOnline ? "Online" : "Offline"}
-                      />
-                    </div>
-                    <h2 className="text-lg font-semibold font-headline text-primary">
-                      {user.displayName || "User"}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                      {user.isOnline ? "Online" : "Offline"}
-                    </p>
-                  </Link>
-                   {currentUser && currentUser.uid !== user.uid && (
-                    <div className="mt-4 w-full">
-                      <CallButton callerId={currentUser.uid} calleeId={user.uid} />
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-20">
-            <p className="text-muted-foreground">No other users are currently available.</p>
-        </div>
-      )}
+      <div className="flex flex-col gap-4">
+        {users.map((u) => (
+          <div
+            key={u.uid}
+            className="flex items-center justify-between p-4 border rounded-xl"
+          >
+             <Link href={`/profile/${u.uid}`} className="flex items-center gap-3">
+              <Avatar className="w-12 h-12 rounded-full object-cover">
+                 <AvatarImage src={u.photoURL} alt={u.displayName} />
+                 <AvatarFallback>{u.displayName?.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-semibold">{u.displayName}</p>
+                <p className={`text-xs ${u.isOnline ? 'text-green-500' : 'text-gray-500'}`}>
+                  {u.isOnline ? "Online" : "Offline"}
+                </p>
+              </div>
+            </Link>
+
+            {user.uid !== u.uid && (
+              <CallButton callerId={user.uid} calleeId={u.uid} />
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
