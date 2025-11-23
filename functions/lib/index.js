@@ -14,23 +14,25 @@ exports.getVideoSDKTokenHttp = functions.https.onRequest(async (req, res) => {
         res.set("Access-Control-Allow-Methods", "GET");
         res.set("Access-Control-Allow-Headers", "Content-Type");
         if (req.method === "OPTIONS") {
-            return res.status(204).send("");
+            res.status(204).send("");
+            return;
         }
         const API_KEY = process.env.VIDEOSDK_API_KEY;
         const SECRET = process.env.VIDEOSDK_SECRET_KEY;
         if (!API_KEY || !SECRET) {
             console.error("❌ Missing VideoSDK env vars");
-            return res.status(500).json({ error: "Env vars missing" });
+            res.status(500).json({ error: "Env vars missing" });
+            return;
         }
         // Create a server-side JWT token
         const token = jwt.sign({
             apikey: API_KEY,
             permissions: ["allow_join", "allow_mod"],
         }, SECRET, { expiresIn: "10m" });
-        return res.status(200).json({ token });
+        res.status(200).json({ token });
     }
     catch (err) {
         console.error("Error generating VideoSDK token:", err);
-        return res.status(500).json({ error: "Internal error" });
+        res.status(500).json({ error: "Internal error" });
     }
 });
