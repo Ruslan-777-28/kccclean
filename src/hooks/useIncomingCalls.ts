@@ -19,7 +19,7 @@ export function useIncomingCalls() {
       callsRef,
       where("calleeId", "==", user.uid),
       where("status", "==", "ringing"),
-      orderBy("createdAt", "desc"),
+      // orderBy("createdAt", "desc"), // Removed to prevent index error
       limit(1)
     );
 
