@@ -19,6 +19,7 @@ export type CallStatus = 'ringing' | 'accepted' | 'in-progress' | 'ended' | 'dec
 
 export interface Call {
   id: string;
+  callId: string;
   callerId: string;
   calleeId: string;
   callerName: string;

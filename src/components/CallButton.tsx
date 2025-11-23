@@ -15,7 +15,7 @@ type CallButtonProps = {
 };
 
 export default function CallButton({ calleeId, calleeName, isOnline }: CallButtonProps) {
-  const { user, userProfile, db } = useAuth();
+  const { user, db } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -23,7 +23,7 @@ export default function CallButton({ calleeId, calleeName, isOnline }: CallButto
   if (!user || user.uid === calleeId) return null;
 
   const handleCall = async () => {
-    if (!user || !userProfile) {
+    if (!user) {
       toast({
         variant: "destructive",
         title: "Authentication Error",
