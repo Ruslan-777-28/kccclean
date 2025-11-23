@@ -53,11 +53,11 @@ exports.getVideoSDKToken = functions.https.onCall((data, context) => {
 exports.getVideoSDKTokenHttp = functions.https.onRequest((req, res) => {
     try {
         const token = generateToken();
-        return res.status(200).send({ token });
+        res.status(200).send({ token });
     }
     catch (error) {
         console.error("HTTP token error:", error);
-        return res.status(500).send({ error: error.message });
+        res.status(500).send({ error: error.message });
     }
 });
 // -----------------------------

@@ -1,7 +1,5 @@
 {
   "projects": {
     "default": "clin-a278c"
-  },
-  "targets": {},
-  "etags": {}
+  }
 }
