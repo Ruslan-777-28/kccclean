@@ -21,7 +21,7 @@ export default function CallPage() {
   const [loadingToken, setLoadingToken] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Subscribe to the call document
+  // Subscribe to Firestore call document
   useEffect(() => {
     if (!db || !callId) return;
 
@@ -29,21 +29,21 @@ export default function CallPage() {
     const unsub = onSnapshot(ref, async (snap) => {
       if (!snap.exists()) {
         setError("Call not found.");
-        setTimeout(() => router.replace("/"), 3000);
+        setTimeout(() => router.replace("/"), 2500);
         return;
       }
 
       const data = { id: snap.id, ...snap.data() } as Call;
       setCall(data);
 
-      // If the call has ended or was declined, redirect
-      if (data.status === "ended" || data.status === "declined") {
+      // If ended/declined → redirect
+      if (["ended", "declined"].includes(data.status)) {
         setError("This call has ended.");
-        setTimeout(() => router.replace("/"), 3000);
+        setTimeout(() => router.replace("/"), 2500);
         return;
       }
 
-      // Once the room is ready, get the token to join
+      // If room exists → fetch token
       if (
         (data.status === "accepted" || data.status === "in-progress") &&
         data.roomId &&
@@ -55,8 +55,8 @@ export default function CallPage() {
           const fetchedToken = await fetchVideoSDKToken();
           setToken(fetchedToken);
         } catch (err) {
-            console.error("Failed to fetch VideoSDK token", err);
-            setError("Failed to get authorization for video call.");
+          console.error("Failed to fetch VideoSDK token", err);
+          setError("Failed to get video authorization.");
         } finally {
           setLoadingToken(false);
         }
@@ -64,12 +64,18 @@ export default function CallPage() {
     });
 
     return () => unsub();
-  }, [callId, router, token, loadingToken, db]);
+  }, [callId, router, db, token, loadingToken]);
 
+  // Errors
   if (error) {
-     return <div className="flex h-screen items-center justify-center text-red-500"><p>{error}</p></div>;
+    return (
+      <div className="flex h-screen items-center justify-center text-red-500">
+        <p>{error}</p>
+      </div>
+    );
   }
 
+  // Still loading
   if (!call || loadingToken) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4">
@@ -79,31 +85,33 @@ export default function CallPage() {
     );
   }
 
-  // Caller is waiting for the callee to accept and create the room
+  // Caller waiting for callee to accept/room creation
   if (call.status === "ringing" || (call.status === "accepted" && !call.roomId)) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4">
         <Loader2 className="h-10 w-10 animate-spin" />
         <p className="text-lg">
-          {call.status === "ringing"
-            ? "Ringing..."
-            : "Connecting to the room..."}
+          {call.status === "ringing" ? "Ringing..." : "Connecting to room..."}
         </p>
       </div>
     );
   }
 
+  // Waiting for token
   if (!token || !call.roomId) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4">
+      <div className="flex h-screen flex-col items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin" />
-        <p>Authenticating for VideoSDK room...</p>
+        <p className="text-lg">Authorizing video room...</p>
       </div>
     );
   }
-  
-  const displayName = user?.displayName || user?.email || "Guest";
 
+  // Display name
+  const displayName =
+    user?.displayName || user?.email || user?.uid || "User";
+
+  // MAIN — Video SDK provider + UI
   return (
     <MeetingProvider
       config={{
