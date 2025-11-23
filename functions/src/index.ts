@@ -4,41 +4,42 @@ import * as jwt from "jsonwebtoken";
 
 admin.initializeApp();
 
-export const getVideoSDKTokenHttp = functions.https.onRequest((req, res) => {
-  // Manual CORS handling
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type");
+export const getVideoSDKTokenHttp = functions.https.onRequest(
+  async (req, res) => {
+    try {
+      res.set("Access-Control-Allow-Origin", "*");
+      res.set("Access-Control-Allow-Methods", "GET");
+      res.set("Access-Control-Allow-Headers", "Content-Type");
 
-  if (req.method === "OPTIONS") {
-    res.status(204).send("");
-    return;
-  }
-  
-  try {
-    const API_KEY = process.env.VIDEOSDK_API_KEY;
-    const SECRET = process.env.VIDEOSDK_SECRET_KEY;
-    
-    if (!API_KEY || !SECRET) {
-      console.error("❌ Missing VideoSDK env vars");
-      res.status(500).json({ error: "Server misconfigured" });
-      return;
-    }
+      if (req.method === "OPTIONS") {
+        res.status(204).send("");
+        return;
+      }
 
-    const payload = {
-      apikey: API_KEY,
-      permissions: ["allow_join"],
-      version: 2,
-    };
+      const API_KEY = process.env.VIDEOSDK_API_KEY;
+      const SECRET = process.env.VIDEOSDK_SECRET_KEY;
 
-    const token = jwt.sign(payload, SECRET, {
-      expiresIn: "24h",
-      algorithm: "HS256",
-    });
+      if (!API_KEY || !SECRET) {
+        console.error("❌ Missing VideoSDK env vars");
+        res.status(500).json({ error: "Env vars missing" });
+        return;
+      }
 
-    res.status(200).json({ token });
-  } catch (err) {
+      // Create a server-side JWT token
+      const token = jwt.sign(
+        {
+          apikey: API_KEY,
+          permissions: ["allow_join", "allow_mod"],
+          role: "server", // This is crucial for creating rooms
+        },
+        SECRET,
+        { expiresIn: "10m", algorithm: "HS256" }
+      );
+
+      res.status(200).json({ token });
+    } catch (err) {
       console.error("Error generating VideoSDK token:", err);
-      res.status(500).json({ error: "Failed to generate token" });
+      res.status(500).json({ error: "Internal error" });
+    }
   }
-});
+);
