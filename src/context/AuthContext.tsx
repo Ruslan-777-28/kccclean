@@ -7,7 +7,6 @@ import { getClientServices, type Auth, type Firestore, type FirebaseStorage, typ
 import { UserPublic } from '@/lib/types';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { startUserPresence, stopUserPresence } from '@/lib/userPresence';
-import IncomingCallHandler from '@/components/IncomingCallHandler';
 
 interface FirebaseServices {
   app: FirebaseApp | null;
@@ -104,7 +103,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     <AuthContext.Provider value={value}>
       <FirebaseErrorListener />
       {loading ? <div className="flex h-screen items-center justify-center"><p>Loading...</p></div> : children}
-      {user && <IncomingCallHandler />}
     </AuthContext.Provider>
   );
 };

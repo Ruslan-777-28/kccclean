@@ -3,7 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { Toaster } from "@/components/ui/toaster";
 import Header from "@/components/layout/Header";
-import IncomingCallHandler from "@/components/IncomingCallHandler";
+import { IncomingCallModal } from "@/components/IncomingCallModal";
 
 export const metadata: Metadata = {
   title: "ConnectNow",
@@ -31,6 +31,7 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AuthProvider>
+          <IncomingCallModal />
           <div className="flex flex-col min-h-screen">
             <Header />
             <main className="flex-grow container mx-auto px-4 py-8">
@@ -38,7 +39,6 @@ export default function RootLayout({
             </main>
           </div>
           <Toaster />
-          <IncomingCallHandler />
         </AuthProvider>
       </body>
     </html>

@@ -1,19 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  DocumentData,
-  orderBy,
-  limit,
-} from "firebase/firestore";
+import { onSnapshot, collection, query, where, orderBy, limit } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
-import { acceptCall, declineCall } from "@/lib/calls";
 import type { Call } from "@/lib/types";
-
+import { acceptCall, declineCall } from "@/lib/calls";
 
 export function useIncomingCalls() {
   const { user, db } = useAuth();
@@ -22,8 +13,8 @@ export function useIncomingCalls() {
   useEffect(() => {
     if (!user || !db) return;
 
-    // слухаємо дзвінки, що адресовані саме цьому юзеру
     const callsRef = collection(db, "calls");
+
     const q = query(
       callsRef,
       where("calleeId", "==", user.uid),
@@ -32,32 +23,35 @@ export function useIncomingCalls() {
       limit(1)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      if (snapshot.empty) {
+    const unsub = onSnapshot(q, (snap) => {
+      if (snap.empty) {
         setIncomingCall(null);
         return;
       }
 
-      const doc = snapshot.docs[0];
-      const data = doc.data() as DocumentData;
+      const doc = snap.docs[0];
+      const data = { id: doc.id, ...doc.data() } as Call;
 
-      setIncomingCall({
-        id: doc.id,
-        ...data
-      } as Call);
+      // Add callerName if it exists on the document
+      if (doc.data().callerName) {
+        data.callerName = doc.data().callerName;
+      }
+
+      setIncomingCall(data);
     });
 
-    return () => unsubscribe();
+    return () => unsub();
   }, [user, db]);
 
   async function accept() {
-    if (!incomingCall || !db) return;
+    if (!incomingCall) return;
     await acceptCall(incomingCall.id);
   }
 
   async function decline() {
-    if (!incomingCall || !db) return;
+    if (!incomingCall) return;
     await declineCall(incomingCall.id);
+    setIncomingCall(null);
   }
 
   return {
