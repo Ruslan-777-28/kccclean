@@ -1,3 +1,4 @@
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import * as jwt from "jsonwebtoken";
@@ -17,7 +18,7 @@ if (!VIDEOSDK_API_KEY || !VIDEOSDK_SECRET) {
 }
 
 // -----------------------------
-//  UTIL: Generate a VideoSDK JWT Token
+//  UTIL: Generate a VideoSDK JWT Token (for client)
 // -----------------------------
 function generateToken() {
   return jwt.sign(
@@ -39,25 +40,34 @@ function generateToken() {
 //  1) Callable Function (PRODUCTION)
 //     Requires Firebase Auth
 // -----------------------------
-export const getVideoSDKToken = functions.https.onCall((data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError(
+export const getVideoSDKToken = onCall({ region: "us-central1" }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError(
       "unauthenticated",
       "Authentication required"
     );
   }
 
   try {
-    const token = generateToken();
+    const payload = {
+      apikey: VIDEOSDK_API_KEY,
+      permissions: ["allow_join", "allow_mod"],
+      version: 2,
+      role: "server", // Server role for creating rooms
+    };
+
+    const token = jwt.sign(payload, VIDEOSDK_SECRET, {
+      expiresIn: "10m",
+      issuer: "https://api.videosdk.live",
+    });
+
     return { token };
-  } catch (error: any) {
-    console.error("Token generation error:", error);
-    throw new functions.https.HttpsError(
-      "internal",
-      "Failed to generate token"
-    );
+  } catch (err) {
+    console.error("Error creating VideoSDK JWT:", err);
+    throw new HttpsError("internal", "TOKEN_CREATION_FAILED");
   }
 });
+
 
 // -----------------------------
 //  2) HTTP Function (TEST / CURL)
