@@ -9,13 +9,13 @@
   "dependencies": {
     "cors": "^2.8.5",
     "firebase-admin": "^11.10.1",
-    "firebase-functions": "^4.9.0",
+    "firebase-functions": "^7.0.0",
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
-    "typescript": "^5.3.3",
-    "@types/jsonwebtoken": "^9.0.2"
+    "@types/jsonwebtoken": "^9.0.2",
+    "typescript": "^5.3.3"
   },
   "engines": {
     "node": "20"

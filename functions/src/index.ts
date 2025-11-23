@@ -1,40 +1,45 @@
-import * as functions from "firebase-functions/v1";
+import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
-import * as cors from "cors";
 import * as jwt from "jsonwebtoken";
 
 admin.initializeApp();
 
-const corsHandler = cors({ origin: true });
-
+// ===============================
+// 1) GET VideoSDK TOKEN (Admin)
+// ===============================
 export const getVideoSDKTokenHttp = functions.https.onRequest(
-  (req, res) => {
-    corsHandler(req, res, () => {
-      try {
-        const API_KEY = functions.config().videosdk.key;
-        const SECRET = functions.config().videosdk.secret;
+  async (req, res) => {
+    try {
+      res.set("Access-Control-Allow-Origin", "*");
+      res.set("Access-Control-Allow-Methods", "GET");
+      res.set("Access-Control-Allow-Headers", "Content-Type");
 
-        if (!API_KEY || !SECRET) {
-          console.error("Missing env vars", { API_KEY, SECRET });
-          return res.status(500).json({ error: "Server misconfigured" });
-        }
+      if (req.method === "OPTIONS") {
+        return res.status(204).send("");
+      }
 
-        const payload = {
+      const API_KEY = process.env.VIDEOSDK_API_KEY;
+      const SECRET = process.env.VIDEOSDK_SECRET_KEY;
+
+      if (!API_KEY || !SECRET) {
+        console.error("❌ Missing VideoSDK env vars");
+        return res.status(500).json({ error: "Env vars missing" });
+      }
+
+      // Create a server-side JWT token
+      const token = jwt.sign(
+        {
           apikey: API_KEY,
           permissions: ["allow_join", "allow_mod"],
-          role: "server",
-        };
+        },
+        SECRET,
+        { expiresIn: "10m" }
+      );
 
-        const token = jwt.sign(payload, SECRET, {
-          expiresIn: "24h",
-          algorithm: "HS256",
-        });
-
-        return res.status(200).json({ token });
-      } catch (err) {
-        console.error("Token generation error:", err);
-        return res.status(500).json({ error: "Token generation failed" });
-      }
-    });
+      return res.status(200).json({ token });
+    } catch (err) {
+      console.error("Error generating VideoSDK token:", err);
+      return res.status(500).json({ error: "Internal error" });
+    }
   }
 );
