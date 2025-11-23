@@ -11,7 +11,7 @@ import {
   limit,
 } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
-import { acceptCall, declineCall } from "@/lib/firestore";
+import { acceptCall, declineCall } from "@/lib/calls";
 import type { Call } from "@/lib/types";
 
 
@@ -52,12 +52,12 @@ export function useIncomingCalls() {
 
   async function accept() {
     if (!incomingCall || !db) return;
-    await acceptCall(db, incomingCall.id);
+    await acceptCall(incomingCall.id);
   }
 
   async function decline() {
     if (!incomingCall || !db) return;
-    await declineCall(db, incomingCall.id);
+    await declineCall(incomingCall.id);
   }
 
   return {

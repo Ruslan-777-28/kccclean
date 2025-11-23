@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Phone } from "lucide-react";
-import { startCall } from "@/lib/firestore";
+import { startCall } from "@/lib/calls";
 
 type CallButtonProps = {
   calleeId: string;
@@ -59,10 +59,10 @@ export default function CallButton({ calleeId, calleeName, isOnline }: CallButto
         description: `Connecting you with ${calleeName}.`,
       });
 
-      // 1) Create calls + incoming documents in Firestore
-      const callId = await startCall(db, user.uid, calleeId, userProfile.displayName || "Anonymous Caller");
+      console.log("🔥 BEFORE startCall");
+      const callId = await startCall(user.uid, calleeId);
+      console.log("🔥 AFTER startCall", callId);
       
-      // 2) Navigate to the call page. The callee will create the room on accept.
       router.push(`/call/${callId}`);
 
     } catch (error: any) {

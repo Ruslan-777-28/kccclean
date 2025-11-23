@@ -4,10 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMeeting, useParticipant } from "@videosdk.live/react-sdk";
 import { useAuth } from "@/context/AuthContext";
-import { updateCallStatus } from "@/lib/firestore";
+import { endCall } from "@/lib/calls";
 import type { Call } from "@/lib/types";
 import { Button } from "./ui/button";
-import { Mic, MicOff, Video, VideoOff, PhoneOff } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Loader2 } from "lucide-react";
 
 interface VideoCallUIProps {
   callId: string;
@@ -84,7 +84,7 @@ export function VideoCallUI({ callId, call }: VideoCallUIProps) {
       router.replace("/");
     },
     onMeetingJoined: async () => {
-        if(db) await updateCallStatus(db, callId, 'in-progress');
+        if(db) await endCall(callId);
     }
   });
 
@@ -93,7 +93,7 @@ export function VideoCallUI({ callId, call }: VideoCallUIProps) {
 
   const handleEndCall = async () => {
     if (db) {
-        await updateCallStatus(db, callId, 'ended');
+        await endCall(callId);
     }
     leave();
   };

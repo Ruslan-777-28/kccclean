@@ -18,7 +18,7 @@ import {
   type User,
   type Timestamp,
 } from 'firebase/firestore';
-import type { UserPublic, Call, CallStatus, UserPrivate } from './types';
+import type { UserPublic, UserPrivate } from './types';
 import { errorEmitter } from './error-emitter';
 import { FirestorePermissionError } from './errors';
 import { createVideoSDKRoom, fetchVideoSDKToken } from './videosdk';
@@ -84,91 +84,6 @@ export function updateUserAvatar(db: Firestore, uid: string, url: string): Promi
       .catch((serverError) => {
         const permissionError = new FirestorePermissionError({
           path: userDocRef.path,
-          operation: 'update',
-          requestResourceData: dataToUpdate,
-        }, serverError);
-        errorEmitter.emit('permission-error', permissionError);
-        throw serverError;
-      });
-}
-
-// --- Call Functions ---
-
-export async function startCall(db: Firestore, callerId: string, calleeId: string, callerName: string): Promise<string> {
-    const callsRef = collection(db, "calls");
-  
-    const callDoc = {
-      callerId,
-      calleeId,
-      callerName,
-      status: "ringing" as CallStatus,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    }
-    const docRef = await addDoc(callsRef, callDoc).catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: callsRef.path,
-          operation: 'create',
-          requestResourceData: callDoc,
-        }, serverError);
-        errorEmitter.emit('permission-error', permissionError);
-        throw serverError;
-    });
-  
-    return docRef.id;
-}
-
-export async function acceptCall(db: Firestore, callId: string) {
-  const callRef = doc(db, "calls", callId);
-
-  // 1) Get token from Cloud Function
-  const token = await fetchVideoSDKToken();
-
-  // 2) Create VideoSDK room
-  const roomId = await createVideoSDKRoom(token);
-
-  // 3) Update the call document
-  const updateData = {
-    status: "accepted",
-    roomId,
-    updatedAt: serverTimestamp(),
-  };
-
-  await updateDoc(callRef, updateData).catch((serverError) => {
-    const permissionError = new FirestorePermissionError({
-      path: callRef.path,
-      operation: 'update',
-      requestResourceData: updateData,
-    }, serverError);
-    errorEmitter.emit('permission-error', permissionError);
-    throw serverError;
-  });
-}
-
-export async function declineCall(db: Firestore, callId: string) {
-  const callRef = doc(db, "calls", callId);
-  const updateData = {
-    status: "declined",
-    updatedAt: serverTimestamp(),
-  };
-  await updateDoc(callRef, updateData).catch((serverError) => {
-    const permissionError = new FirestorePermissionError({
-      path: callRef.path,
-      operation: 'update',
-      requestResourceData: updateData,
-    }, serverError);
-    errorEmitter.emit('permission-error', permissionError);
-    throw serverError;
-  });
-}
-
-export function updateCallStatus(db: Firestore, callId: string, status: CallStatus): Promise<void> {
-  const callDocRef = doc(db, 'calls', callId);
-  const dataToUpdate = { status, updatedAt: serverTimestamp() };
-  return updateDoc(callDocRef, dataToUpdate)
-    .catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: callDocRef.path,
           operation: 'update',
           requestResourceData: dataToUpdate,
         }, serverError);
