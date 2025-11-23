@@ -9,7 +9,6 @@ if (!admin.apps.length) {
 const VIDEOSDK_API_KEY = functions.config().videosdk.api_key as string;
 const VIDEOSDK_SECRET = functions.config().videosdk.secret as string;
 
-// callable-функція: фронт викликає її через Firebase Functions SDK
 export const getVideoSDKToken = functions.https.onCall((data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError(
@@ -25,20 +24,19 @@ export const getVideoSDKToken = functions.https.onCall((data, context) => {
     );
   }
 
-  const options: jwt.SignOptions = {
-    expiresIn: "120m",
-    algorithm: "HS256",
-  };
-
-  const payload = {
-    apikey: VIDEOSDK_API_KEY,
-    // дозволяємо одразу заходити в кімнату й модити інших (для MVP)
-    permissions: ["allow_join", "allow_mod"],
-    version: 2,
-    roles: ["rtc"], // токен для клієнтського SDK, не для серверних API
-  };
-
-  const token = jwt.sign(payload, VIDEOSDK_SECRET, options);
+  const token = jwt.sign(
+    {
+      apikey: VIDEOSDK_API_KEY,
+      permissions: ["allow_join", "allow_mod"],
+      version: 2,
+      roles: ["rtc"]
+    },
+    VIDEOSDK_SECRET,
+    {
+      expiresIn: "120m",
+      algorithm: "HS256"
+    }
+  );
 
   return { token };
 });

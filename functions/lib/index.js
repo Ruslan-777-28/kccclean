@@ -32,64 +32,36 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createDailyRoom = void 0;
-const https_1 = require("firebase-functions/v2/https");
-const logger = __importStar(require("firebase-functions/logger"));
-const params_1 = require("firebase-functions/params");
-const firestore_1 = require("firebase-admin/firestore");
-const node_fetch_1 = __importDefault(require("node-fetch"));
-// Ініціалізація Firebase Admin
-const app_1 = require("firebase-admin/app");
-(0, app_1.initializeApp)();
-// Підключаємо секрет DAILY_API_KEY
-const DAILY_API_KEY = (0, params_1.defineSecret)("DAILY_API_KEY");
-exports.createDailyRoom = (0, https_1.onCall)({ secrets: [DAILY_API_KEY] }, async (request) => {
-    try {
-        const { callId } = request.data;
-        if (!request.auth) {
-            throw new Error("Not authenticated");
-        }
-        if (!callId) {
-            throw new Error("Missing callId");
-        }
-        // --- 1. Створюємо кімнату Daily ---
-        const response = await (0, node_fetch_1.default)("https://api.daily.co/v1/rooms", {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${DAILY_API_KEY.value()}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                properties: {
-                    exp: Math.floor(Date.now() / 1000) + 60 * 60,
-                    enable_screenshare: true,
-                    enable_chat: true,
-                    eject_at_room_exp: true,
-                    max_participants: 2,
-                },
-            }),
-        });
-        const data = await response.json();
-        if (!data.url) {
-            logger.error("Daily API error:", data);
-            throw new Error("Failed to create Daily room");
-        }
-        const roomUrl = data.url;
-        // --- 2. Зберігаємо roomUrl у Firestore ---
-        const db = (0, firestore_1.getFirestore)();
-        await db.collection("calls").doc(callId).update({
-            roomUrl,
-        });
-        logger.info("Daily room created:", roomUrl);
-        return { roomUrl };
+exports.getVideoSDKToken = void 0;
+const functions = __importStar(require("firebase-functions"));
+const admin = __importStar(require("firebase-admin"));
+const jwt = __importStar(require("jsonwebtoken"));
+if (!admin.apps.length) {
+    admin.initializeApp();
+}
+const VIDEOSDK_API_KEY = functions.config().videosdk.api_key;
+const VIDEOSDK_SECRET = functions.config().videosdk.secret;
+// callable-функція: фронт викликає її через Firebase Functions SDK
+exports.getVideoSDKToken = functions.https.onCall((data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError("unauthenticated", "Authentication required");
     }
-    catch (err) {
-        logger.error("Error in createDailyRoom:", err);
-        throw new Error(err.message || "Unable to create Daily room");
+    if (!VIDEOSDK_API_KEY || !VIDEOSDK_SECRET) {
+        throw new functions.https.HttpsError("failed-precondition", "VideoSDK api_key / secret not configured");
     }
+    const options = {
+        expiresIn: "120m",
+        algorithm: "HS256",
+    };
+    const payload = {
+        apikey: VIDEOSDK_API_KEY,
+        // дозволяємо одразу заходити в кімнату й модити інших (для MVP)
+        permissions: ["allow_join", "allow_mod"],
+        version: 2,
+        roles: ["rtc"], // токен для клієнтського SDK, не для серверних API
+    };
+    const token = jwt.sign(payload, VIDEOSDK_SECRET, options);
+    return { token };
 });
 //# sourceMappingURL=index.js.map
