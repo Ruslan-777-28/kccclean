@@ -7,9 +7,10 @@ import {
   setDoc,
   getDoc,
   addDoc,
-  collection
+  collection,
 } from "firebase/firestore";
 import { getClientServices } from "./firebase";
+import { fetchVideoSDKToken, createVideoSDKRoom } from "./videosdk";
 
 const { db } = getClientServices();
 
@@ -25,7 +26,7 @@ export async function startCall(callerId: string, calleeId: string) {
     status: "ringing",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-    roomId: null, // roomId створиться після accept
+    roomId: null,
   });
 
   return callDocRef.id;
@@ -34,7 +35,6 @@ export async function startCall(callerId: string, calleeId: string) {
 // -----------------------------
 // ПРИЙНЯТТЯ ВИКЛИКУ
 // -----------------------------
-// Новий спосіб: roomId генеруємо самі на клієнті
 export async function acceptCall(callId: string) {
   if (!db) throw new Error("Firestore not initialized");
 
@@ -45,9 +45,15 @@ export async function acceptCall(callId: string) {
     throw new Error("Call does not exist");
   }
 
-  // Створюємо roomId локально
-  const roomId = crypto.randomUUID();
+  // 1️⃣ Отримуємо VideoSDK токен
+  const token = await fetchVideoSDKToken();
+  if (!token) throw new Error("Failed to obtain VideoSDK token");
 
+  // 2️⃣ Створюємо кімнату на VideoSDK
+  const roomId = await createVideoSDKRoom(token);
+  if (!roomId) throw new Error("Failed to create VideoSDK room");
+
+  // 3️⃣ Оновлюємо Firestore
   await updateDoc(callRef, {
     status: "accepted",
     roomId,
