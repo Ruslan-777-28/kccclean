@@ -24,6 +24,12 @@ export function useIncomingCalls(userId: string | null) {
     );
 
     const unsub = onSnapshot(q, (snapshot) => {
+        console.log("📡 SNAPSHOT", {
+          empty: snapshot.empty,
+          size: snapshot.size,
+          docs: snapshot.docs.map(d => ({ id: d.id, ...d.data() }))
+        });
+
         // If the query is empty, it means there are no ringing calls for this user.
         if (snapshot.empty) {
           setIncomingCall(null);
