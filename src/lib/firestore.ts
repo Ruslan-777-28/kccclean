@@ -18,10 +18,10 @@ import {
   type User,
   type Timestamp,
 } from 'firebase/firestore';
-import { httpsCallable, type Functions } from 'firebase/functions';
 import type { UserPublic, Call, CallStatus, UserPrivate } from './types';
 import { errorEmitter } from './error-emitter';
 import { FirestorePermissionError } from './errors';
+import { createVideoSDKRoom, fetchVideoSDKToken } from './videosdk';
 
 // --- User Functions ---
 
@@ -94,82 +94,59 @@ export function updateUserAvatar(db: Firestore, uid: string, url: string): Promi
 
 // --- Call Functions ---
 
-export async function createCall(
-  db: Firestore,
-  callerId: string,
-  calleeId: string,
-  callerName: string
-): Promise<string> {
-  const batch = writeBatch(db);
-
-  const callDocRef = doc(collection(db, "calls"));
-  const callId = callDocRef.id;
-
-  batch.set(callDocRef, {
-    callerId,
-    calleeId,
-    callerName,
-    status: "ringing",
-    roomUrl: null,
-    createdAt: serverTimestamp(),
-  });
-
-  const incomingDocRef = doc(db, "incoming", calleeId);
-  batch.set(incomingDocRef, {
-    callId,
-    callerId,
-    callerName,
-    createdAt: serverTimestamp(),
-  });
+export async function startCall(db: Firestore, callerId: string, calleeId: string, callerName: string): Promise<string> {
+    const callsRef = collection(db, "calls");
   
-  await batch.commit();
-
-  return callId;
-}
-
-
-export function listenToCall(db: Firestore, callId: string, callback: (call: Call | null) => void): Unsubscribe {
-  const callDocRef = doc(db, 'calls', callId);
-  return onSnapshot(callDocRef, 
-    (doc) => {
-      if (doc.exists()) {
-        callback({ id: doc.id, ...doc.data() } as Call);
-      } else {
-        callback(null);
-      }
-    },
-    (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: callDocRef.path,
-        operation: 'get',
-      }, serverError);
-      errorEmitter.emit('permission-error', permissionError);
-      callback(null);
+    const callDoc = {
+      callerId,
+      calleeId,
+      callerName,
+      status: "ringing" as CallStatus,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     }
-  );
+    const docRef = await addDoc(callsRef, callDoc);
+  
+    // Create incoming call notification for callee
+    const incomingDocRef = doc(db, "incoming", calleeId);
+    await setDoc(incomingDocRef, {
+      callId: docRef.id,
+      callerId,
+      callerName,
+      createdAt: serverTimestamp(),
+    });
+
+    return docRef.id;
 }
 
-export function listenToIncomingCalls(db: Firestore, userId: string, callback: (calls: Call[]) => void): Unsubscribe {
-  const callsRef = collection(db, 'calls');
-  const q = query(callsRef, where('calleeId', '==', userId), where('status', '==', 'ringing'), limit(1));
-  
-  return onSnapshot(q, (snapshot) => {
-    const calls = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Call));
-    callback(calls);
-  },
-  (serverError) => {
-    const permissionError = new FirestorePermissionError({
-      path: callsRef.path,
-      operation: 'list',
-    }, serverError);
-    errorEmitter.emit('permission-error', permissionError);
-    callback([]);
+export async function acceptCall(db: Firestore, callId: string) {
+  const callRef = doc(db, "calls", callId);
+
+  // 1) Get token from Cloud Function
+  const token = await fetchVideoSDKToken();
+
+  // 2) Create VideoSDK room
+  const roomId = await createVideoSDKRoom(token);
+
+  // 3) Update the call document
+  await updateDoc(callRef, {
+    status: "accepted",
+    roomId,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function declineCall(db: Firestore, callId: string) {
+  const callRef = doc(db, "calls", callId);
+  await updateDoc(callRef, {
+    status: "declined",
+    updatedAt: serverTimestamp(),
   });
 }
 
 export function updateCallStatus(db: Firestore, callId: string, status: CallStatus): Promise<void> {
   const callDocRef = doc(db, 'calls', callId);
-  const dataToUpdate = { status };
+  const dataToUpdate = { status, updatedAt: serverTimestamp() };
   return updateDoc(callDocRef, dataToUpdate)
     .catch((serverError) => {
         const permissionError = new FirestorePermissionError({

@@ -6,8 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Phone } from "lucide-react";
-import { createCall } from "@/lib/firestore";
-import { httpsCallable } from "firebase/functions";
+import { startCall } from "@/lib/firestore";
 
 type CallButtonProps = {
   calleeId: string;
@@ -16,12 +15,11 @@ type CallButtonProps = {
 };
 
 export default function CallButton({ calleeId, calleeName, isOnline }: CallButtonProps) {
-  const { user, userProfile, db, functions: funcs } = useAuth();
+  const { user, userProfile, db } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
-  // Hide call button on own profile
   if (!user || user.uid === calleeId) return null;
 
   const handleCall = async () => {
@@ -35,7 +33,7 @@ export default function CallButton({ calleeId, calleeName, isOnline }: CallButto
       return;
     }
 
-    if (!db || !funcs) {
+    if (!db) {
       toast({
         variant: "destructive",
         title: "Initialization Error",
@@ -61,20 +59,14 @@ export default function CallButton({ calleeId, calleeName, isOnline }: CallButto
         description: `Connecting you with ${calleeName}.`,
       });
 
-      // 1) Create calls + incoming documents
-      console.log("🔥 BEFORE createCall");
-      const callId = await createCall(db, user.uid, calleeId, userProfile.displayName || "Anonymous Caller");
-      console.log("🔥 AFTER createCall", callId);
-
-      // 2) Call Cloud Function to create Daily room
-      const createRoom = httpsCallable(funcs, "createDailyRoom");
-      await createRoom({ callId });
-
-      // 3) Navigate to the call page
+      // 1) Create calls + incoming documents in Firestore
+      const callId = await startCall(db, user.uid, calleeId, userProfile.displayName || "Anonymous Caller");
+      
+      // 2) Navigate to the call page. The callee will create the room on accept.
       router.push(`/call/${callId}`);
 
     } catch (error: any) {
-      console.error("❌ createCall failed:", error);
+      console.error("❌ startCall failed:", error);
       toast({
         variant: "destructive",
         title: "Call Failed",

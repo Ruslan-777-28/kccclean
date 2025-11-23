@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { updateCallStatus } from "@/lib/firestore";
+import { acceptCall, declineCall } from "@/lib/firestore";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { deleteDoc, doc, onSnapshot } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 type IncomingCallData = {
   callId: string;
@@ -25,6 +26,7 @@ type IncomingCallData = {
 export default function IncomingCallListener() {
   const { user, db } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const [incomingCall, setIncomingCall] = useState<IncomingCallData | null>(null);
   
   useEffect(() => {
@@ -55,15 +57,31 @@ export default function IncomingCallListener() {
 
   const handleAccept = async () => {
     if (!incomingCall || !db) return;
-    await updateCallStatus(db, incomingCall.callId, "accepted");
-    await clearIncomingDoc();
-    router.push(`/call/${incomingCall.callId}`);
+    try {
+      await acceptCall(db, incomingCall.callId);
+      await clearIncomingDoc();
+      router.push(`/call/${incomingCall.callId}`);
+    } catch (error: any) {
+       toast({
+        variant: "destructive",
+        title: "Failed to Accept Call",
+        description: error.message || "Could not create video room.",
+      });
+    }
   };
 
   const handleDecline = async () => {
     if (!incomingCall || !db) return;
-    await updateCallStatus(db, incomingCall.callId, "declined");
-    await clearIncomingDoc();
+    try {
+        await declineCall(db, incomingCall.callId);
+        await clearIncomingDoc();
+    } catch (error: any) {
+         toast({
+            variant: "destructive",
+            title: "Failed to Decline Call",
+            description: error.message,
+        });
+    }
   };
 
   if (!incomingCall) {

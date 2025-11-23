@@ -15,13 +15,14 @@ export interface UserPrivate {
   // Add any private user settings here
 }
 
-export type CallStatus = 'ringing' | 'accepted' | 'ended' | 'declined';
+export type CallStatus = 'ringing' | 'accepted' | 'in-progress' | 'ended' | 'declined';
 
 export interface Call {
   id: string;
   callerId: string;
   calleeId: string;
   status: CallStatus;
-  roomUrl: string | null;
+  roomId?: string; // VideoSDK roomId (xxx-yyy-zzz)
   createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
