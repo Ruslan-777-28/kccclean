@@ -12,12 +12,11 @@ import {
 import { getClientServices } from "./firebase";
 import { fetchVideoSDKToken, createVideoSDKRoom } from "./videosdk";
 
-const { db } = getClientServices();
-
 // -----------------------------
 // ІНІЦІАЦІЯ ВИКЛИКУ
 // -----------------------------
 export async function startCall(callerId: string, calleeId: string) {
+  const { db } = getClientServices();
   if (!db) throw new Error("Firestore not initialized");
 
   const callDocRef = await addDoc(collection(db, "calls"), {
@@ -36,6 +35,7 @@ export async function startCall(callerId: string, calleeId: string) {
 // ПРИЙНЯТТЯ ВИКЛИКУ
 // -----------------------------
 export async function acceptCall(callId: string) {
+  const { db } = getClientServices();
   if (!db) throw new Error("Firestore not initialized");
 
   const callRef = doc(db, "calls", callId);
@@ -67,6 +67,7 @@ export async function acceptCall(callId: string) {
 // ВІДХИЛЕННЯ ВИКЛИКУ
 // -----------------------------
 export async function declineCall(callId: string) {
+  const { db } = getClientServices();
   if (!db) throw new Error("Firestore not initialized");
 
   const callRef = doc(db, "calls", callId);
@@ -80,6 +81,7 @@ export async function declineCall(callId: string) {
 // ЗАВЕРШЕННЯ ВИКЛИКУ
 // -----------------------------
 export async function endCall(callId: string) {
+  const { db } = getClientServices();
   if (!db) throw new Error("Firestore not initialized");
 
   const callRef = doc(db, "calls", callId);
