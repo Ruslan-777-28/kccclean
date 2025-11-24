@@ -20,23 +20,16 @@ const firebaseConfig = {
   appId: safeEnv(process.env.NEXT_PUBLIC_FIREBASE_APP_ID, "APP_ID"),
 };
 
-// Moved Firebase initialization inside the request handler
-// to ensure it runs in the correct serverless function context.
-let app: ReturnType<typeof getApp>;
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApp();
-}
-
-const db = getFirestore(app);
-
-
 // ------------------
 // GET /api/get-call-room?callId=123
 // ------------------
 export async function GET(req: Request) {
   try {
+    // Moved Firebase initialization inside the request handler
+    // to ensure it runs in the correct serverless function context.
+    const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    const db = getFirestore(app);
+
     const url = new URL(req.url);
     const callId = url.searchParams.get("callId");
 
