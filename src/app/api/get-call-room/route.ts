@@ -1,64 +1,43 @@
 import { NextResponse } from "next/server";
-import * as admin from "firebase-admin";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { initializeApp, getApps, getApp } from "firebase/app";
 
-// Prevent re-initializing admin app
-if (!admin.apps.length) {
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
-
-  if (!projectId || !clientEmail || !privateKey) {
-    console.error("Firebase Admin SDK environment variables are not set.");
-  } else {
-    if (privateKey) {
-      privateKey = privateKey.replace(/\\n/g, "\n");
-    }
-  
-    try {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId,
-          clientEmail,
-          privateKey,
-        }),
-      });
-    } catch (error: any) {
-      console.error('Firebase admin initialization error', error.stack);
-    }
-  }
-}
-
-let db: admin.firestore.Firestore;
-if (admin.apps.length) {
-  db = admin.firestore();
-}
-
-
+// ------------------
+// GET /api/get-call-room?callId=123
+// ------------------
 export async function GET(req: Request) {
-  if (!db) {
-    return NextResponse.json(
-      { error: "Firebase Admin SDK not initialized." },
-      { status: 500 }
-    );
-  }
-  
   try {
-    const { searchParams } = new URL(req.url);
-    const callId = searchParams.get("callId");
+    // Moved Firebase initialization inside the request handler
+    // to ensure it runs in the correct serverless function context.
+    const firebaseConfig = {
+      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
+      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!,
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET!,
+      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID!,
+      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+    };
+
+    const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    const db = getFirestore(app);
+
+    const url = new URL(req.url);
+    const callId = url.searchParams.get("callId");
 
     if (!callId) {
       return NextResponse.json({ error: "Missing callId" }, { status: 400 });
     }
 
-    const snap = await db.collection("calls").doc(callId).get();
+    const ref = doc(db, "calls", callId);
+    const snap = await getDoc(ref);
 
-    if (!snap.exists) {
+    if (!snap.exists()) {
       return NextResponse.json({ error: "Call not found" }, { status: 404 });
     }
 
-    const data = snap.data();
+    const data = snap.data() as any;
 
-    if (!data?.roomId) {
+    if (!data.roomId) {
       return NextResponse.json(
         { error: "Room not created yet. Callee has not accepted." },
         { status: 404 }
@@ -67,9 +46,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ roomId: data.roomId });
   } catch (err) {
-    console.error("GET /api/get-call-room error:", err);
+    console.error("API /get-call-room error:", err);
     return NextResponse.json(
-      { error: "Server error" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
