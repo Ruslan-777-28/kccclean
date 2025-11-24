@@ -6,8 +6,9 @@ export async function GET() {
   const SECRET_KEY = process.env.VIDEOSDK_SECRET_KEY;
 
   if (!API_KEY || !SECRET_KEY) {
+    console.error("Missing VideoSDK API key or secret in environment variables.");
     return NextResponse.json(
-      { error: "VideoSDK API key or secret not configured" },
+      { error: "VideoSDK API key or secret not configured on the server." },
       { status: 500 }
     );
   }
