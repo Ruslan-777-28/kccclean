@@ -1,8 +1,4 @@
 {
-  "functions": {
-    "source": "functions",
-    "runtime": "nodejs20"
-  },
   "hosting": {
     "public": "public",
     "ignore": [
@@ -12,6 +8,3 @@
     "site": "YOUR_FIREBASE_HOSTING_SITE_ID"
   }
 }
-
-
-
