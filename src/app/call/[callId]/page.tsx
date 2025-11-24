@@ -20,26 +20,49 @@ import type { Call } from "@/lib/types";
 
 interface ParticipantViewProps {
   participantId: string;
+  isLocal?: boolean;
 }
 
-function ParticipantView({ participantId }: ParticipantViewProps) {
-  const { webcamStream, webcamOn, displayName } = useParticipant(participantId);
-  const videoRef = useRef<HTMLVideoElement>(null);
+function ParticipantView({ participantId, isLocal }: ParticipantViewProps) {
+  const { webcamStream, webcamOn, displayName, micStream, micOn } =
+    useParticipant(participantId);
 
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Відео
   useEffect(() => {
-    if (videoRef.current) {
-      if (webcamOn && webcamStream) {
-        const mediaStream = new MediaStream();
-        mediaStream.addTrack(webcamStream.track);
-        videoRef.current.srcObject = mediaStream;
-        videoRef.current
-          .play()
-          .catch((e) => console.error("video_play_error", e));
-      } else {
-        videoRef.current.srcObject = null;
-      }
+    if (!videoRef.current) return;
+
+    if (webcamOn && webcamStream) {
+      const mediaStream = new MediaStream();
+      mediaStream.addTrack(webcamStream.track);
+      videoRef.current.srcObject = mediaStream;
+
+      videoRef.current
+        .play()
+        .catch((e) => console.error("video_play_error", e));
+    } else {
+      videoRef.current.srcObject = null;
     }
   }, [webcamStream, webcamOn]);
+
+  // Аудіо (тільки для НЕ локального учасника)
+  useEffect(() => {
+    if (!audioRef.current || isLocal) return;
+
+    if (micOn && micStream) {
+      const mediaStream = new MediaStream();
+      mediaStream.addTrack(micStream.track);
+      audioRef.current.srcObject = mediaStream;
+
+      audioRef.current
+        .play()
+        .catch((e) => console.error("audio_play_error", e));
+    } else {
+      audioRef.current.srcObject = null;
+    }
+  }, [micStream, micOn, isLocal]);
 
   return (
     <div className="relative h-full w-full rounded-lg overflow-hidden bg-gray-900 flex items-center justify-center">
@@ -48,8 +71,11 @@ function ParticipantView({ participantId }: ParticipantViewProps) {
         className="h-full w-full object-cover"
         autoPlay
         playsInline
-        muted
+        muted={isLocal} // локального — м’ютимо, щоб не було луни
       />
+      {/* Аудіо для віддаленого учасника */}
+      {!isLocal && <audio ref={audioRef} autoPlay playsInline />}
+
       {!webcamOn && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50">
           <div className="h-24 w-24 bg-gray-700 rounded-full flex items-center justify-center text-3xl">
@@ -63,6 +89,7 @@ function ParticipantView({ participantId }: ParticipantViewProps) {
     </div>
   );
 }
+
 
 function CallUIView({ callId, roomId }: { callId: string, roomId: string }) {
   const router = useRouter();
@@ -117,7 +144,10 @@ function CallUIView({ callId, roomId }: { callId: string, roomId: string }) {
           </div>
           <div className="flex-grow min-h-[150px]">
             {localParticipant && (
-              <ParticipantView participantId={localParticipant.id} />
+              <ParticipantView
+                participantId={localParticipant.id}
+                isLocal={true}
+              />
             )}
           </div>
         </div>
@@ -168,7 +198,7 @@ function CallUIView({ callId, roomId }: { callId: string, roomId: string }) {
 export default function CallPage() {
   const { callId: callIdParam } = useParams();
   const callId = callIdParam as string;
-  const { db } = useAuth();
+  const { db, user } = useAuth();
 
   const [callData, setCallData] = useState<Call | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -234,7 +264,7 @@ export default function CallPage() {
       token={token}
       config={{
         meetingId: roomId,
-        name: "User", // This can be replaced with the actual user's name
+        name: user?.displayName ?? "User",
         micEnabled: true,
         webcamEnabled: true,
       }}
