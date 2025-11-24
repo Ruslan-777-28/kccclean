@@ -1,11 +1,10 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { getClientServices, type Auth, type Firestore, type FirebaseStorage, type FirebaseApp, type Functions } from '@/lib/firebase';
 import { UserPublic } from '@/lib/types';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 import { startUserPresence, stopUserPresence } from '@/lib/userPresence';
 
 interface FirebaseServices {
@@ -37,8 +36,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserPublic | null>(null);
   const [loading, setLoading] = useState(true);
-  
-  const services = getClientServices();
+
+  // Memoize services to prevent re-initialization on every render
+  const services = useMemo(() => getClientServices(), []);
   const { auth, db } = services;
 
   useEffect(() => {
@@ -46,14 +46,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(false);
         return;
     }
-    const authUnsubscribe = onAuthStateChanged(auth, async (user) => {
+
+    const authUnsubscribe = onAuthStateChanged(auth, async (authUser) => {
       let profileUnsubscribe: (() => void) | undefined;
 
-      if (user) {
-        setUser(user);
-        startUserPresence(db, user);
+      if (authUser) {
+        setUser(authUser);
+        startUserPresence(db, authUser);
         
-        const userDocRef = doc(db, 'users_public', user.uid);
+        const userDocRef = doc(db, 'users_public', authUser.uid);
         profileUnsubscribe = onSnapshot(userDocRef, (doc) => {
           if (doc.exists()) {
             setUserProfile({ uid: doc.id, ...doc.data() } as UserPublic);
@@ -61,11 +62,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUserProfile(null);
           }
           setLoading(false);
-        });
+        }, () => setLoading(false)); // Handle snapshot errors
       } else {
-        if(auth.currentUser) {
-            stopUserPresence(db, auth.currentUser);
-        }
         setUser(null);
         setUserProfile(null);
         setLoading(false);
@@ -75,8 +73,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (profileUnsubscribe) {
             profileUnsubscribe();
         }
-        // This logic was slightly flawed, we need to ensure we have a user to stop presence for.
-        // It's better to handle this on user state change.
       };
     });
 
@@ -101,7 +97,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      <FirebaseErrorListener />
       {loading ? <div className="flex h-screen items-center justify-center"><p>Loading...</p></div> : children}
     </AuthContext.Provider>
   );

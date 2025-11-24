@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import Header from "@/components/layout/Header";
 import IncomingCallModal from "@/components/IncomingCallModal";
 import { useIncomingCalls } from "@/hooks/useIncomingCalls";
+import { FirebaseErrorListener } from "@/components/FirebaseErrorListener";
 
 function AppContent({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -21,6 +22,7 @@ function AppContent({ children }: { children: React.ReactNode }) {
           onClose={clearIncoming}
         />
       )}
+       <FirebaseErrorListener />
       <div className="flex flex-col min-h-screen">
         <Header />
         <main className="flex-grow container mx-auto px-4 py-8">
