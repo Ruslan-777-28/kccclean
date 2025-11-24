@@ -1,32 +1,23 @@
 
 "use client";
 
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { getClientServices } from "./firebase";
-import type { Functions } from "firebase/functions";
-
-// Get functions instance outside of the function to avoid re-initialization
-let functions: Functions | null = null;
-if (typeof window !== "undefined") {
-    const services = getClientServices();
-    functions = services.functions;
-}
-
-
 export async function fetchVideoSDKToken(): Promise<string> {
-  if (!functions) {
-      throw new Error("Firebase Functions is not initialized.");
-  }
   try {
-    const getVideoSDKToken = httpsCallable(functions, 'getVideoSDKToken');
-    const result = await getVideoSDKToken();
-    const token = (result.data as { token: string }).token;
+    const response = await fetch("/api/videosdk-token", {
+      method: "GET",
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch VideoSDK token: ${response.status} ${errorText}`);
+    }
+    const { token } = await response.json();
     if (!token) {
-        throw new Error("Received empty token from function.");
+        throw new Error("Received empty token from API.");
     }
     return token;
   } catch(error: any) {
-    console.error("Error fetching VideoSDK token from function:", error);
+    console.error("Error fetching VideoSDK token:", error);
     throw new Error(`Failed to fetch VideoSDK token: ${error.message}`);
   }
 }
