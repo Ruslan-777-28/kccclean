@@ -1,34 +1,34 @@
 import { NextResponse } from "next/server";
-import * as jwt from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
 export async function GET() {
-  const API_KEY = process.env.VIDEOSDK_API_KEY;
-  const SECRET_KEY = process.env.VIDEOSDK_SECRET_KEY;
-
-  if (!API_KEY || !SECRET_KEY) {
-    console.error("Missing VideoSDK API key or secret in environment variables.");
-    return NextResponse.json(
-      { error: "VideoSDK API key or secret not configured on the server." },
-      { status: 500 }
-    );
-  }
-
   try {
+    const apiKey = process.env.VIDEOSDK_API_KEY;
+    const secretKey = process.env.VIDEOSDK_SECRET_KEY;
+
+    if (!apiKey || !secretKey) {
+      return NextResponse.json(
+        { error: "Missing VideoSDK API or Secret Key" },
+        { status: 500 }
+      );
+    }
+
+    // Generate VideoSDK JWT
     const payload = {
-      apikey: API_KEY,
-      permissions: ["allow_join", "allow_mod"], // Allow joining and moderation
+      apikey: apiKey,
+      permissions: ["allow_join", "allow_mod"],
     };
 
-    const token = jwt.sign(payload, SECRET_KEY, {
-      expiresIn: "24h",
+    const token = jwt.sign(payload, secretKey, {
+      expiresIn: "10m",
       algorithm: "HS256",
     });
 
     return NextResponse.json({ token });
-  } catch (e: any) {
-    console.error("Token Generation Error:", e);
+  } catch (error: any) {
+    console.error("VideoSDK token error:", error);
     return NextResponse.json(
-      { error: e.message || "Server error generating token" },
+      { error: "Failed to generate token" },
       { status: 500 }
     );
   }
