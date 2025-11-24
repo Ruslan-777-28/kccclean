@@ -7,13 +7,16 @@ import {
   useMeeting,
   useParticipant,
 } from "@videosdk.live/react-sdk";
+import { doc, onSnapshot } from "firebase/firestore";
+import { useAuth } from "@/context/AuthContext";
 import { fetchVideoSDKToken } from "@/lib/videosdk";
 import LoadingScreen from "@/components/LoadingScreen";
 import { endCall } from "@/lib/calls";
 import { Button } from "@/components/ui/button";
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Loader2 } from "lucide-react";
+import type { Call } from "@/lib/types";
 
-// --- Sub-components moved directly into this file ---
+// --- Sub-components ---
 
 interface ParticipantViewProps {
   participantId: string;
@@ -163,55 +166,56 @@ function CallUIView({ callId, roomId }: { callId: string, roomId: string }) {
 
 // --- Main Page Component ---
 export default function CallPage() {
-  const { callId } = useParams();
-  const [roomId, setRoomId] = useState<string | null>(null);
+  const { callId: callIdParam } = useParams();
+  const callId = callIdParam as string;
+  const { db } = useAuth();
+
+  const [callData, setCallData] = useState<Call | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function setupCall() {
-      if (!callId) {
-        setError("Call ID is missing.");
-        setLoading(false);
-        return;
-      }
+    if (!db || !callId) return;
 
-      try {
-        setLoading(true);
-        // Fetch token and room data in parallel for efficiency
-        const [tokenResponse, roomResponse] = await Promise.all([
-          fetchVideoSDKToken(),
-          fetch(`/api/get-call-room?callId=${callId}`),
-        ]);
+    // Fetch token first
+    fetchVideoSDKToken()
+      .then(setToken)
+      .catch((err) => {
+        console.error("Failed to get VideoSDK token", err);
+        setError("Could not get a valid token for the call.");
+      });
 
-        // Handle token fetching error
-        // The fetchVideoSDKToken function already throws an error, so we catch it below.
-        setToken(tokenResponse);
-        
-        // Handle room data fetching error
-        if (!roomResponse.ok) {
-          const errorData = await roomResponse.json();
-          throw new Error(errorData.error || `Failed to fetch room data: ${roomResponse.statusText}`);
+    // Subscribe to call document for real-time updates (roomId)
+    const unsub = onSnapshot(
+      doc(db, "calls", callId),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data() as Call;
+          setCallData(data);
+          if(data.roomId) {
+            setLoading(false);
+          }
+          if(data.status === 'declined' || data.status === 'ended') {
+            setError("This call has ended.");
+            setLoading(false);
+          }
+        } else {
+          setError("This call does not exist.");
+          setLoading(false);
         }
-        const roomData = await roomResponse.json();
-        
-        if (!roomData.roomId) {
-            throw new Error("Room ID is missing from the server response.");
-        }
-
-        setRoomId(roomData.roomId);
-
-      } catch (err: any) {
-        console.error("Failed to setup call:", err);
-        setError(err.message || "An unknown error occurred during call setup.");
-      } finally {
+      },
+      (err) => {
+        console.error("Error listening to call document:", err);
+        setError("Failed to connect to call data.");
         setLoading(false);
       }
-    }
+    );
 
-    setupCall();
-  }, [callId]);
+    return () => unsub();
+  }, [db, callId]);
+
+  const roomId = callData?.roomId;
 
   if (loading) {
     return <LoadingScreen message="Connecting to call..." />;
@@ -220,9 +224,9 @@ export default function CallPage() {
   if (error) {
     return <LoadingScreen message={`Error: ${error}`} />;
   }
-
+  
   if (!roomId || !token) {
-    return <LoadingScreen message="Could not initialize call. Missing room ID or token." />;
+    return <LoadingScreen message="Waiting for user to accept the call..." />;
   }
 
   return (
@@ -235,7 +239,7 @@ export default function CallPage() {
         webcamEnabled: true,
       }}
     >
-      <CallUIView callId={callId as string} roomId={roomId} />
+      <CallUIView callId={callId} roomId={roomId} />
     </MeetingProvider>
   );
 }
