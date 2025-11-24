@@ -17,6 +17,9 @@ if (!getApps().length) {
   initializeApp(firebaseConfig);
 }
 
+// Log for debugging environment variables
+console.log("CLIENT INIT OK, Project ID:", process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+
 const db = getFirestore();
 
 export async function GET(req: Request) {
