@@ -83,7 +83,7 @@ function CallUIView({ callId, roomId }: { callId: string, roomId: string }) {
 
   useEffect(() => {
     join();
-  }, [join]);
+  }, []);
 
   const participantIds = Array.from(participants.keys());
   const remoteParticipants = participantIds.filter(
