@@ -102,6 +102,8 @@ function CallUIView({ callId, roomId }: { callId: string, roomId: string }) {
     join,
     micOn,
     webcamOn,
+    disableWebcam,
+    disableMic,
   } = useMeeting({
     onMeetingLeft: () => {
       router.replace("/");
@@ -119,6 +121,8 @@ function CallUIView({ callId, roomId }: { callId: string, roomId: string }) {
 
   const handleEndCall = async () => {
     await endCall(callId);
+    disableWebcam();
+    disableMic();
     leave();
   };
 
