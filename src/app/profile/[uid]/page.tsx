@@ -14,7 +14,7 @@ import CallButton from '@/components/CallButton';
 export default function ProfilePage() {
   const params = useParams();
   const uid = params.uid as string;
-  const { user: authUser, db, storage } = useAuth();
+  const { user: authUser } = useAuth();
   const { toast } = useToast();
   const [user, setUser] = useState<UserPublic | null>(null);
   const [loading, setLoading] = useState(true);
@@ -24,15 +24,15 @@ export default function ProfilePage() {
   const isOwnProfile = authUser?.uid === uid;
 
   useEffect(() => {
-    if (!db || !uid) return;
+    if (!uid) return;
     const fetchUser = async () => {
       setLoading(true);
-      const userProfile = await getUserProfile(db, uid);
+      const userProfile = await getUserProfile(uid);
       setUser(userProfile);
       setLoading(false);
     };
     fetchUser();
-  }, [db, uid]);
+  }, [uid]);
 
   const handleAvatarClick = () => {
     if (isOwnProfile && !uploading) {
@@ -42,14 +42,14 @@ export default function ProfilePage() {
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !authUser || !storage || !db) return;
+    if (!file || !authUser) return;
 
     setUploading(true);
     toast({ title: 'Завантаження...', description: 'Ваш новий аватар завантажується.' });
 
     try {
-      const newPhotoURL = await uploadAvatar(storage, authUser.uid, file);
-      await updateUserAvatar(db, authUser.uid, newPhotoURL);
+      const newPhotoURL = await uploadAvatar(authUser.uid, file);
+      await updateUserAvatar(authUser.uid, newPhotoURL);
       
       // Update local state to show new avatar immediately
       setUser(prevUser => prevUser ? { ...prevUser, photoURL: newPhotoURL } : null);

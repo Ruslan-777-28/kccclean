@@ -1,12 +1,17 @@
 'use client';
 
-import { doc, serverTimestamp, updateDoc, type Firestore } from "firebase/firestore";
-import type { User } from "firebase/auth";
+import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { getFirebaseAuth, getFirebaseDb } from "./firebase";
+
 
 let presenceInterval: NodeJS.Timeout | null = null;
 
 // Function to start the presence system for a logged-in user
-export function startUserPresence(db: Firestore, user: User) {
+export function startUserPresence() {
+  const auth = getFirebaseAuth();
+  const db = getFirebaseDb();
+  const user = auth.currentUser;
+
   if (typeof window === 'undefined' || !user) return;
 
   const userDocRef = doc(db, "users_public", user.uid);
@@ -43,7 +48,10 @@ export function startUserPresence(db: Firestore, user: User) {
 }
 
 // Function to stop the presence system (e.g., on logout)
-export function stopUserPresence(db: Firestore, user: User) {
+export function stopUserPresence() {
+    const auth = getFirebaseAuth();
+    const db = getFirebaseDb();
+    const user = auth.currentUser;
     if (typeof window === 'undefined' || !user) return;
     
     if (presenceInterval) {

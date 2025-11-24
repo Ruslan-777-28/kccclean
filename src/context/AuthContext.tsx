@@ -4,16 +4,16 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { getClientServices, type Auth, type Firestore, type FirebaseStorage, type FirebaseApp, type Functions } from '@/lib/firebase';
+import { getFirebaseAuth, getFirebaseDb, getFirebaseStorage, getFirebaseFunctions, getFirebaseApp, type Auth, type Firestore, type FirebaseStorage, type FirebaseApp, type Functions } from '@/lib/firebase';
 import { UserPublic } from '@/lib/types';
 import { startUserPresence, stopUserPresence } from '@/lib/userPresence';
 
 interface FirebaseServices {
-  app: FirebaseApp | null;
-  auth: Auth | null;
-  db: Firestore | null;
-  storage: FirebaseStorage | null;
-  functions: Functions | null;
+  app: FirebaseApp;
+  auth: Auth;
+  db: Firestore;
+  storage: FirebaseStorage;
+  functions: Functions;
 }
 
 interface AuthContextType extends FirebaseServices {
@@ -22,16 +22,7 @@ interface AuthContextType extends FirebaseServices {
   loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  app: null,
-  auth: null,
-  db: null,
-  storage: null,
-  functions: null,
-  user: null,
-  userProfile: null,
-  loading: true,
-});
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -39,21 +30,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   // Memoize services to prevent re-initialization on every render
-  const services = useMemo(() => getClientServices(), []);
+  const services = useMemo(() => {
+      // This function now correctly initializes all firebase services lazily
+      // so we can just call the getters here.
+      return {
+        app: getFirebaseApp(),
+        auth: getFirebaseAuth(),
+        db: getFirebaseDb(),
+        storage: getFirebaseStorage(),
+        functions: getFirebaseFunctions()
+      }
+  }, []);
+  
   const { auth, db } = services;
 
   useEffect(() => {
-    if (!auth || !db) {
-        setLoading(false);
-        return;
-    }
-
     const authUnsubscribe = onAuthStateChanged(auth, async (authUser) => {
       let profileUnsubscribe: (() => void) | undefined;
 
       if (authUser) {
         setUser(authUser);
-        startUserPresence(db, authUser);
+        startUserPresence();
         
         const userDocRef = doc(db, 'users_public', authUser.uid);
         profileUnsubscribe = onSnapshot(userDocRef, (doc) => {
@@ -78,8 +75,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if(auth?.currentUser && db) {
-        stopUserPresence(db, auth.currentUser);
+      if(auth.currentUser) {
+        stopUserPresence();
       }
     }
 
@@ -88,8 +85,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       authUnsubscribe();
       window.removeEventListener('beforeunload', handleBeforeUnload);
-       if(auth?.currentUser && db) {
-        stopUserPresence(db, auth.currentUser);
+       if(auth.currentUser) {
+        stopUserPresence();
       }
     };
   }, [auth, db]);
@@ -103,4 +100,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
+    return context;
+};

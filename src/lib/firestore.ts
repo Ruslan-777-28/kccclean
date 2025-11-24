@@ -14,18 +14,18 @@ import {
   limit,
   Unsubscribe,
   writeBatch,
-  type Firestore,
   type User,
   type Timestamp,
 } from 'firebase/firestore';
 import type { UserPublic, UserPrivate } from './types';
 import { errorEmitter } from './error-emitter';
 import { FirestorePermissionError } from './errors';
-import { createVideoSDKRoom, fetchVideoSDKToken } from './videosdk';
+import { getFirebaseDb } from './firebase';
 
 // --- User Functions ---
 
-export function createUserProfile(db: Firestore, user: User, data: { displayName: string, email: string, photoURL: string }): Promise<void> {
+export function createUserProfile(user: User, data: { displayName: string, email: string, photoURL: string }): Promise<void> {
+  const db = getFirebaseDb();
   const batch = writeBatch(db);
 
   const publicDocRef = doc(db, 'users_public', user.uid);
@@ -59,7 +59,8 @@ export function createUserProfile(db: Firestore, user: User, data: { displayName
   });
 }
 
-export async function getUserProfile(db: Firestore, uid: string): Promise<UserPublic | null> {
+export async function getUserProfile(uid: string): Promise<UserPublic | null> {
+  const db = getFirebaseDb();
   const userDocRef = doc(db, 'users_public', uid);
   try {
     const userDoc = await getDoc(userDocRef);
@@ -77,7 +78,8 @@ export async function getUserProfile(db: Firestore, uid: string): Promise<UserPu
   }
 }
 
-export function updateUserAvatar(db: Firestore, uid: string, url: string): Promise<void> {
+export function updateUserAvatar(uid: string, url: string): Promise<void> {
+    const db = getFirebaseDb();
     const userDocRef = doc(db, 'users_public', uid);
     const dataToUpdate = { photoURL: url };
     return updateDoc(userDocRef, dataToUpdate)

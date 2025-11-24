@@ -4,20 +4,18 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
-  setDoc,
   getDoc,
   addDoc,
   collection,
 } from "firebase/firestore";
-import { getClientServices } from "./firebase";
+import { getFirebaseDb } from "./firebase";
 import { fetchVideoSDKToken, createVideoSDKRoom } from "./videosdk";
 
 // -----------------------------
 // ІНІЦІАЦІЯ ВИКЛИКУ
 // -----------------------------
 export async function startCall(callerId: string, calleeId: string) {
-  const { db } = getClientServices();
-  if (!db) throw new Error("Firestore not initialized");
+  const db = getFirebaseDb();
 
   const callDocRef = await addDoc(collection(db, "calls"), {
     callerId,
@@ -35,8 +33,7 @@ export async function startCall(callerId: string, calleeId: string) {
 // ПРИЙНЯТТЯ ВИКЛИКУ
 // -----------------------------
 export async function acceptCall(callId: string) {
-  const { db } = getClientServices();
-  if (!db) throw new Error("Firestore not initialized");
+  const db = getFirebaseDb();
 
   const callRef = doc(db, "calls", callId);
   const snap = await getDoc(callRef);
@@ -67,9 +64,7 @@ export async function acceptCall(callId: string) {
 // ВІДХИЛЕННЯ ВИКЛИКУ
 // -----------------------------
 export async function declineCall(callId: string) {
-  const { db } = getClientServices();
-  if (!db) throw new Error("Firestore not initialized");
-
+  const db = getFirebaseDb();
   const callRef = doc(db, "calls", callId);
   await updateDoc(callRef, {
     status: "declined",
@@ -81,9 +76,7 @@ export async function declineCall(callId: string) {
 // ЗАВЕРШЕННЯ ВИКЛИКУ
 // -----------------------------
 export async function endCall(callId: string) {
-  const { db } = getClientServices();
-  if (!db) throw new Error("Firestore not initialized");
-
+  const db = getFirebaseDb();
   const callRef = doc(db, "calls", callId);
   await updateDoc(callRef, {
     status: "ended",
