@@ -1,19 +1,17 @@
 "use client";
 
 export async function fetchVideoSDKToken(): Promise<string> {
-  const url = "https://us-central1-clin-a278c.cloudfunctions.net/getVideoSDKTokenHttp";
-
   try {
-    const response = await fetch(url, { method: "GET" });
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to get token: ${response.status} ${errorText}`);
+    const res = await fetch("/api/videosdk-token");
+    if (!res.ok) {
+       const errorData = await res.json();
+       throw new Error(errorData.error || `Failed to fetch token: ${res.statusText}`);
     }
-    const data = await response.json();
+    const data = await res.json();
     return data.token;
-  } catch (error) {
+  } catch(error: any) {
     console.error("Fetch token error:", error);
-    throw new Error("Failed to fetch VideoSDK token");
+    throw new Error(`Failed to fetch VideoSDK token: ${error.message}`);
   }
 }
 
