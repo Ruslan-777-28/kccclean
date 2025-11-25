@@ -123,10 +123,10 @@ export default function CallUIView({
     <div className="flex flex-col h-screen bg-black text-white">
 
       {/* MAIN AREA */}
-      <div className="flex-1 p-3 flex flex-col md:flex-row gap-3">
+      <div className="flex-1 p-3 relative">
 
-        {/* Remote video */}
-        <div className="flex-1 h-full rounded-lg overflow-hidden">
+        {/* Remote video (full screen) */}
+        <div className="w-full h-full rounded-lg overflow-hidden">
           {remoteParticipants.length > 0 ? (
             <ParticipantView participantId={remoteParticipants[0]} />
           ) : (
@@ -137,12 +137,12 @@ export default function CallUIView({
           )}
         </div>
 
-        {/* Local video */}
-        <div className="w-full md:w-1/4 lg:w-1/5 h-1/3 md:h-full rounded-lg overflow-hidden">
-          {localParticipant && (
-            <ParticipantView participantId={localParticipant.id} />
-          )}
-        </div>
+        {/* Local video (picture-in-picture) */}
+         {localParticipant && (
+            <div className="absolute top-5 right-5 w-1/4 max-w-[250px] h-auto aspect-video rounded-lg overflow-hidden border-2 border-gray-700">
+                <ParticipantView participantId={localParticipant.id} />
+            </div>
+        )}
 
       </div>
 
