@@ -123,27 +123,27 @@ export default function CallUIView({
     <div className="flex flex-col h-screen bg-black text-white">
 
       {/* MAIN AREA */}
-      <div className="flex-1 p-3 relative">
-
-        {/* Remote video (full screen) */}
-        <div className="w-full h-full rounded-lg overflow-hidden">
-          {remoteParticipants.length > 0 ? (
-            <ParticipantView participantId={remoteParticipants[0]} />
-          ) : (
-            <div className="h-full w-full bg-gray-900 rounded-lg flex flex-col items-center justify-center gap-4">
-              <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
-              <p className="text-gray-400">Waiting for the other participant...</p>
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="w-full max-w-4xl aspect-video grid grid-cols-2 gap-4">
+            {/* Remote video */}
+            <div className="w-full h-full rounded-lg overflow-hidden">
+              {remoteParticipants.length > 0 ? (
+                <ParticipantView participantId={remoteParticipants[0]} />
+              ) : (
+                <div className="h-full w-full bg-gray-900 rounded-lg flex flex-col items-center justify-center gap-4">
+                  <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+                  <p className="text-gray-400">Waiting for participant...</p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Local video (picture-in-picture) */}
-         {localParticipant && (
-            <div className="absolute top-5 right-5 w-1/4 max-w-[250px] h-auto aspect-video rounded-lg overflow-hidden border-2 border-gray-700">
+            {/* Local video */}
+            <div className="w-full h-full rounded-lg overflow-hidden">
+             {localParticipant && (
                 <ParticipantView participantId={localParticipant.id} />
+            )}
             </div>
-        )}
-
+        </div>
       </div>
 
       {/* CONTROLS */}
