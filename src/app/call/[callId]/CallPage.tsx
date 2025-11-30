@@ -9,7 +9,7 @@ import { fetchVideoSDKToken } from "@/lib/videosdk";
 import { doc, onSnapshot } from "firebase/firestore";
 import type { Call } from "@/lib/types";
 
-export default function CallClient({ callId }: { callId: string }) {
+export default function CallPage({ callId }: { callId: string }) {
   const { db } = useAuth();
 
   const [token, setToken] = useState<string | null>(null);
