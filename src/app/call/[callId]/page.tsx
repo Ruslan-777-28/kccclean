@@ -1,10 +1,5 @@
-import dynamic from "next/dynamic";
-
-const CallPageClient = dynamic(
-  () => import("./CallPageClient"),
-  { ssr: false }
-);
+import CallPageWrapper from "@/app/call/[callId]/CallPageWrapper";
 
 export default function Page({ params }: { params: { callId: string } }) {
-  return <CallPageClient callId={params.callId} />;
+  return <CallPageWrapper callId={params.callId} />;
 }
