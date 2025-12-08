@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 
 export async function GET() {
   const API_KEY = process.env.VIDEOSDK_API_KEY;
-  const SECRET_KEY = process.env.VIDEOSDK_SECRET_KEY;
+  const SECRET_KEY = process.env.VIDEOSDK_SECRET;
 
   if (!API_KEY || !SECRET_KEY) {
     return NextResponse.json(
@@ -12,11 +12,10 @@ export async function GET() {
     );
   }
 
-  // Створюємо JWT токен
   const token = jwt.sign(
     {
       apikey: API_KEY,
-      permissions: ["allow_join", "allow_mod"], // ДУЖЕ ВАЖЛИВО
+      permissions: ["allow_join", "allow_mod"],
     },
     SECRET_KEY,
     { expiresIn: "24h" }
