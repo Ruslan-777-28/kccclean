@@ -74,7 +74,9 @@ export default function CallPageClient() {
 
       setMeeting(meetingInstance);
 
-      // LOCAL VIDEO → when meeting joined
+      // ---------------------------------------------------
+      // LOCAL VIDEO → after meeting joined
+      // ---------------------------------------------------
       meetingInstance.on("meeting-joined", () => {
         console.log("✔ Meeting joined");
 
@@ -87,7 +89,9 @@ export default function CallPageClient() {
         }
       });
 
-      // REMOTE VIDEO → when another participant enables stream
+      // ---------------------------------------------------
+      // REMOTE VIDEO → when participant enables stream
+      // ---------------------------------------------------
       meetingInstance.on("participant-joined", (participant: any) => {
         console.log("Participant joined:", participant.id);
 
