@@ -2,22 +2,30 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import VideoSDK from "@videosdk.live/js-sdk";
-import type { Meeting, Participant } from "@videosdk.live/js-sdk";
 
 export default function CallPageClient() {
   const { callId } = useParams();
   const router = useRouter();
 
-  const [meeting, setMeeting] = useState<Meeting | null>(null);
-  const [localParticipant, setLocalParticipant] = useState<Participant | null>(null);
-  const [remoteParticipant, setRemoteParticipant] = useState<Participant | null>(null);
+  const [meeting, setMeeting] = useState<any>(null);
+  const [VideoSDK, setVideoSDK] = useState<any>(null);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
 
   // ---------------------------------------------------------
-  // GET TOKEN FROM YOUR BACKEND
+  // LOAD SDK DYNAMICALLY (THE ONLY CORRECT WAY FOR NEXT.JS)
+  // ---------------------------------------------------------
+  useEffect(() => {
+    const loadSDK = async () => {
+      const sdk = (await import("@videosdk.live/js-sdk")).default;
+      setVideoSDK(sdk);
+    };
+    loadSDK();
+  }, []);
+
+  // ---------------------------------------------------------
+  // GET TOKEN FROM BACKEND
   // ---------------------------------------------------------
   const fetchToken = async () => {
     try {
@@ -31,21 +39,22 @@ export default function CallPageClient() {
   };
 
   // ---------------------------------------------------------
-  // INITIALIZE MEETING
+  // INIT MEETING ONCE SDK IS LOADED
   // ---------------------------------------------------------
   useEffect(() => {
-    let meetingInstance: Meeting | null = null;
-  
+    if (!VideoSDK || !callId) return; // wait for dynamic load
+
+    let meetingInstance: any = null;
+
     const init = async () => {
       const token = await fetchToken();
-      if (!token || !callId) {
-        alert("VideoSDK token or Call ID missing. Cannot join meeting.");
+      if (!token) {
+        alert("Missing VideoSDK token.");
         return;
       }
 
-      // ⭐ NO SECRET HERE — EVER ⭐
       meetingInstance = VideoSDK.initMeeting({
-        meetingId: callId as string,
+        meetingId: callId,
         name: "User",
         micEnabled: true,
         webcamEnabled: true,
@@ -54,93 +63,65 @@ export default function CallPageClient() {
 
       setMeeting(meetingInstance);
 
-      // ---- Local participant ----
+      // LOCAL
       meetingInstance.on("meeting-joined", () => {
-        const lp = meetingInstance?.localParticipant;
-        if(lp) {
-          setLocalParticipant(lp);
+        const lp = meetingInstance.localParticipant;
 
-          if (lp?.webcamStream && localVideoRef.current) {
-            const mediaStream = new MediaStream();
-            mediaStream.addTrack(lp.webcamStream.track);
-            localVideoRef.current.srcObject = mediaStream;
-            localVideoRef.current.play();
-          }
+        if (lp.webcamStream && localVideoRef.current) {
+          const stream = new MediaStream([lp.webcamStream.track]);
+          localVideoRef.current.srcObject = stream;
+          localVideoRef.current.play();
         }
       });
 
-      // ---- Remote participant joins ----
-      meetingInstance.on("participant-joined", (participant) => {
-        setRemoteParticipant(participant);
-
-        participant.on("stream-enabled", (stream) => {
+      // REMOTE
+      meetingInstance.on("participant-joined", (participant: any) => {
+        participant.on("stream-enabled", (stream: any) => {
           if (stream.kind === "video" && remoteVideoRef.current) {
-            const mediaStream = new MediaStream();
-            mediaStream.addTrack(stream.track);
-            remoteVideoRef.current.srcObject = mediaStream;
+            const ms = new MediaStream([stream.track]);
+            remoteVideoRef.current.srcObject = ms;
             remoteVideoRef.current.play();
           }
         });
       });
-
-      // ---- Remote participant leaves ----
+      
       meetingInstance.on("participant-left", () => {
-        setRemoteParticipant(null);
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = null;
         }
       });
-      
+
       meetingInstance.join();
     };
 
     init();
 
     return () => {
-      if (meetingInstance) {
-        meetingInstance.leave();
-      }
+      meetingInstance?.leave();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [callId]);
+  }, [VideoSDK, callId]);
+  
+  const handleEndCall = () => {
+    if(meeting) {
+        meeting.leave();
+    }
+    router.push('/');
+  }
 
-  const endCall = () => {
-    if (meeting) meeting.leave();
-    router.push("/");
-  };
-
-  // ---------------------------------------------------------
-  // RENDER UI
-  // ---------------------------------------------------------
   return (
-    <div className="flex flex-col items-center justify-center p-6 w-full h-screen bg-black text-white">
-
-      <div className="flex gap-6 w-full max-w-4xl justify-center">
-
-        {/* REMOTE VIDEO */}
-        <div className="bg-gray-900 rounded-lg w-[70%] h-[400px] flex items-center justify-center overflow-hidden">
-          {remoteParticipant ? (
-            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
-          ) : (
-            <div className="text-gray-400">Waiting for participant...</div>
-          )}
+    <div className="flex flex-col items-center justify-center w-full h-full bg-black text-white p-8">
+      <div className="flex gap-6 w-full max-w-4xl">
+        <div className="w-[70%] h-[400px] bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center">
+          <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
         </div>
-
-        {/* LOCAL VIDEO */}
-        <div className="bg-gray-800 rounded-lg w-[25%] h-[180px] overflow-hidden border border-gray-700">
-          <video
-            ref={localVideoRef}
-            autoPlay
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-          />
+        <div className="w-[25%] h-[180px] bg-gray-800 rounded-lg overflow-hidden">
+          <video ref={localVideoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
         </div>
       </div>
 
-      {/* END CALL */}
       <button
-        onClick={endCall}
+        onClick={handleEndCall}
         className="mt-6 px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-semibold"
       >
         End Call
