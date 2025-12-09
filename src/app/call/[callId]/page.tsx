@@ -1,5 +1,6 @@
-import CallPageWrapper from "@/app/call/[callId]/CallPageWrapper";
+"use client";
+import CallPageClient from "./CallPageClient";
 
-export default function Page({ params }: { params: { callId: string } }) {
-  return <CallPageWrapper callId={params.callId} />;
+export default function Page() {
+  return <CallPageClient />;
 }
