@@ -15,7 +15,7 @@ export default function CallPageClient() {
   const router = useRouter();
 
   // ---------- STATE ----------
-  const [sdk, setSdk] = useState<VideoSDKType | null>(null);
+  const [VideoSDK, setVideoSDK] = useState<VideoSDKType | null>(null);
   const [meeting, setMeeting] = useState<MeetingType | null>(null);
   const [isJoined, setIsJoined] = useState(false);
 
@@ -48,18 +48,17 @@ export default function CallPageClient() {
     const loadSDK = async () => {
       try {
         console.log("📦 Loading VideoSDK js-sdk...");
-        const mod: any = await import("@videosdk.live/js-sdk");
-        const lib = mod.default || mod; // підтримка і CJS, і ESM
+        const { VideoSDK: sdkModule } = await import("@videosdk.live/js-sdk");
 
         if (cancelled) return;
 
-        if (!lib || typeof lib.initMeeting !== "function") {
-          console.error("❌ VideoSDK loaded, but initMeeting is missing:", lib);
+        if (!sdkModule || typeof sdkModule.initMeeting !== "function") {
+          console.error("❌ VideoSDK loaded, but initMeeting is missing:", sdkModule);
           return;
         }
 
-        console.log("✅ VideoSDK loaded. Has initMeeting:", typeof lib.initMeeting);
-        setSdk(lib);
+        console.log("✅ VideoSDK loaded. Has initMeeting:", typeof sdkModule.initMeeting);
+        setVideoSDK(sdkModule);
       } catch (error) {
         console.error("❌ Failed to load VideoSDK js-sdk:", error);
       }
@@ -93,7 +92,7 @@ export default function CallPageClient() {
 
   // ---------- 3. INIT MEETING WHEN SDK + callId READY ----------
   useEffect(() => {
-    if (!sdk) {
+    if (!VideoSDK) {
       console.log("⏳ Waiting for SDK to load...");
       return;
     }
@@ -115,8 +114,8 @@ export default function CallPageClient() {
       }
 
       try {
-        console.log("🎥 Calling sdk.initMeeting...");
-        meetingInstance = sdk.initMeeting({
+        console.log("🎥 Calling VideoSDK.initMeeting...");
+        meetingInstance = VideoSDK.initMeeting({
           meetingId: callId,
           name: "User", // TODO: підставити реальний displayName
           micEnabled: true,
@@ -125,7 +124,7 @@ export default function CallPageClient() {
         });
 
         if (!meetingInstance) {
-          console.error("❌ sdk.initMeeting returned null/undefined.");
+          console.error("❌ VideoSDK.initMeeting returned null/undefined.");
           return;
         }
 
@@ -212,7 +211,7 @@ export default function CallPageClient() {
     };
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sdk, callId]);
+  }, [VideoSDK, callId]);
 
   // ---------- 4. END CALL ----------
   const handleEndCall = () => {
