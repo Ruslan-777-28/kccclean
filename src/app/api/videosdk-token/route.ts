@@ -26,57 +26,39 @@ export async function generateToken() {
 export async function GET() {
   try {
     const API_KEY = process.env.VIDEOSDK_API_KEY;
-    // The secret is passed in the body for the API call, not used for signing here.
     const SECRET = process.env.VIDEOSDK_SECRET; 
 
     if (!API_KEY || !SECRET) {
       console.error("Missing VideoSDK API Key or Secret in .env");
       return NextResponse.json({ error: "Missing VideoSDK keys" }, { status: 500 });
     }
-
-    // The official endpoint for generating a token requires a POST request
+    
+    // The new authentication method for creating a room doesn't use a separate token endpoint for that,
+    // but rather a direct API call with the credentials.
     const res = await fetch("https://api.videosdk.live/v2/rooms", {
       method: "POST",
       headers: {
-        "authorization": API_KEY,
+        "authorization": `${API_KEY}:${SECRET}`, // Corrected Authorization
         "Content-Type": "application/json",
       },
-       body: JSON.stringify({}), // Sending an empty body is often sufficient
+       body: JSON.stringify({}),
     });
+    
+    const data = await res.json();
 
     if (!res.ok) {
-        const errorBody = await res.text();
-        console.error("VideoSDK API Error:", errorBody);
-        return NextResponse.json({ error: `Failed to create room: ${errorBody}` }, { status: res.status });
+        console.error("VideoSDK API Error:", data);
+        return NextResponse.json(data, { status: res.status });
     }
     
-    const { roomId } = await res.json();
-
-    // Now generate the token for this room
-     const tokenRes = await fetch("https://api.videosdk.live/v2/auth/token", {
-        method: "POST",
-        headers: {
-            "authorization": API_KEY,
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            "apikey": API_KEY,
-            "permissions": [`allow_join`, `allow_mod`],
-            // You might need to add roomId here if required by your setup
-        }),
-     });
+    // The token generation logic will now be part of the client-side initialization, 
+    // or we can generate it here if needed for a specific room.
+    // For now, let's just return the room data.
+    // We will generate the token on the client, which is a common pattern.
     
-     if(!tokenRes.ok) {
-        const errorBody = await tokenRes.text();
-        console.error("VideoSDK Token Generation Error:", errorBody);
-        return NextResponse.json({ error: `Token generation failed: ${errorBody}` }, { status: tokenRes.status });
-     }
-
-    const { token } = await tokenRes.json();
-    
-    return NextResponse.json({ token });
+    return NextResponse.json(data);
   } catch (e: any) {
     console.error("Unexpected error in /api/videosdk-token:", e);
-    return NextResponse.json({ error: e.message || "Token fetch failed" }, { status: 500 });
+    return NextResponse.json({ error: e.message || "Room creation failed" }, { status: 500 });
   }
 }
