@@ -13,7 +13,7 @@ export async function GET() {
   }
 
   try {
-    // 1) Створюємо **JWT токен**
+    // Create JWT token
     const token = jwt.sign(
       {
         apikey: API_KEY,
@@ -23,7 +23,7 @@ export async function GET() {
       { expiresIn: "24h" }
     );
 
-    // 2) Створюємо кімнату через VideoSDK API
+    // Create room
     const roomRes = await fetch("https://api.videosdk.live/v2/rooms", {
       method: "POST",
       headers: {
