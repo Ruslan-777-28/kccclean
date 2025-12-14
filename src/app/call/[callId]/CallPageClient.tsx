@@ -14,16 +14,14 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
       // Fetch token
       const res = await fetch("/api/videosdk-token");
       const { token } = await res.json();
-      const apiKey = process.env.NEXT_PUBLIC_VIDEOSDK_API_KEY;
 
-      if (!token || !apiKey) {
-        console.error("Token or apiKey missing");
+      if (!token) {
+        console.error("Token missing");
         return;
       }
 
       // SDK CONFIG – IMPORTANT
       await VideoSDK.config({
-        apiKey,
         token,
       });
 
