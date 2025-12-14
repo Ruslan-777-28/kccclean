@@ -12,14 +12,13 @@ export async function GET() {
     );
   }
 
+  // MUST BE EXACT FORMAT — VideoSDK requires "apikey"
   const payload = {
     apikey: API_KEY,
-    version: 2,
-    permissions: ["allow_join", "allow_mod", "allow_publish"],
+    permissions: ["allow_join", "allow_mod"],
   };
 
   const token = jwt.sign(payload, SECRET_KEY, {
-    algorithm: "HS256",
     expiresIn: "24h",
   });
 

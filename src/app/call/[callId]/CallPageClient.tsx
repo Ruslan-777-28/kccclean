@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import VideoSDK from "@videosdk.live/js-sdk";
+import VideoSDK from "@videosdk.live/js-sdk/dist/videosdk";
 
 export default function CallPageClient({ meetingId }: { meetingId: string }) {
   const localRef = useRef<HTMLVideoElement | null>(null);
@@ -10,14 +10,8 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
   useEffect(() => {
     if (!meetingId) return;
 
-    async function start() {
-      // 1. Check if SDK is loaded
-      if (!VideoSDK) {
-        console.error("VideoSDK failed to load");
-        return;
-      }
-      
-      // 2. Отримуємо токен
+    async function startMeeting() {
+      // 1. Fetch token
       const res = await fetch("/api/videosdk-token");
       const { token } = await res.json();
 
@@ -26,10 +20,10 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
         return;
       }
 
-      // 3. Конфіг SDK
+      // 2. Load SDK
       await VideoSDK.config({ token });
 
-      // 4. Ініціалізація зустрічі
+      // 3. Create meeting
       const meeting = VideoSDK.initMeeting({
         meetingId,
         name: "User",
@@ -37,31 +31,33 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
         webcamEnabled: true,
       });
 
+      // 4. Join room
       meeting.join();
 
-      // 5. Локальний стрім
+      // 5. Local video stream
       meeting.on("meeting-joined", () => {
         const stream = meeting.localParticipant?.streams?.find(
           (s: any) => s.kind === "video"
         );
+
         if (stream && localRef.current) {
           stream.attach(localRef.current);
         }
       });
 
-      // 6. Ремот стрім
+      // 6. Remote participant video
       meeting.on("stream-enabled", (stream: any) => {
         if (
           stream.kind === "video" &&
-          stream.participantId !== meeting.localParticipant.id &&
-          remoteRef.current
+          remoteRef.current &&
+          stream.participantId !== meeting.localParticipant.id
         ) {
           stream.attach(remoteRef.current);
         }
       });
     }
 
-    start();
+    startMeeting();
   }, [meetingId]);
 
   return (
