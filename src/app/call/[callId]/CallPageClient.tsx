@@ -1,44 +1,49 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import VideoSDK from "@videosdk.live/js-sdk";
+import VideoSDK from "@videosdk.live/js-sdk/dist/videosdk";
 
 export default function CallPageClient({ meetingId }: { meetingId: string }) {
-  const localRef = useRef(null);
-  const remoteRef = useRef(null);
+  const localRef = useRef<HTMLVideoElement | null>(null);
+  const remoteRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     async function start() {
       if (!meetingId) return;
-      const tokenRes = await fetch("/api/videosdk-token");
-      const { token } = await tokenRes.json();
+
+      // 1. Get token
+      const res = await fetch("/api/videosdk-token");
+      const { token } = await res.json();
 
       if (!token) {
-        alert("Failed to get token");
+        console.error("Token error");
         return;
       }
 
+      // 2. Init meeting
       const meeting = VideoSDK.initMeeting({
         meetingId,
-        name: "User",
         apiKey: process.env.NEXT_PUBLIC_VIDEOSDK_API_KEY,
-        containerId: null,
+        name: "User",
         micEnabled: true,
         webcamEnabled: true,
       });
 
+      // 3. Join meeting
       meeting.join();
 
-      meeting.on("stream-enabled", (stream: any) => {
-        if (stream.kind === "video" && stream.participantId !== meeting.localParticipant.id) {
-          stream.attach(remoteRef.current);
+      // 4. Local stream
+      meeting.on("meeting-joined", () => {
+        const localStream = meeting.localParticipant?.streams?.find((s: any) => s.kind === "video");
+        if (localStream && localRef.current) {
+          localStream.attach(localRef.current);
         }
       });
 
-      meeting.on("meeting-joined", () => {
-        const localStream = meeting.localParticipant?.streams?.find((s: any) => s.kind === "video");
-        if (localStream) {
-          localStream.attach(localRef.current);
+      // 5. Remote stream
+      meeting.on("stream-enabled", (stream: any) => {
+        if (stream.kind === "video" && remoteRef.current) {
+          stream.attach(remoteRef.current);
         }
       });
     }
