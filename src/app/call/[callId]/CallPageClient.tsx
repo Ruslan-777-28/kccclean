@@ -9,8 +9,12 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
   useEffect(() => {
     if (!meetingId) return;
 
-    async function startMeeting() {
-      // 1. Token
+    async function start() {
+
+      // 1. Dynamic import - важливо!
+      const VideoSDK = (await import("@videosdk.live/js-sdk")).default;
+
+      // 2. Отримуємо токен
       const res = await fetch("/api/videosdk-token");
       const { token } = await res.json();
 
@@ -19,19 +23,10 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
         return;
       }
 
-      // 2. Wait for SDK to load
-      const VideoSDK = (window as any).VideoSDK;
-      if (!VideoSDK) {
-        console.error("VideoSDK not loaded");
-        return;
-      }
+      // 3. Конфіг SDK
+      await VideoSDK.config({ token });
 
-      // 3. Configure
-      await VideoSDK.config({
-        token,
-      });
-
-      // 4. Create meeting
+      // 4. Ініціалізація зустрічі
       const meeting = VideoSDK.initMeeting({
         meetingId,
         name: "User",
@@ -41,7 +36,7 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
 
       meeting.join();
 
-      // 5. Local stream
+      // 5. Локальний стрім
       meeting.on("meeting-joined", () => {
         const stream = meeting.localParticipant?.streams?.find(
           (s: any) => s.kind === "video"
@@ -51,19 +46,19 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
         }
       });
 
-      // 6. Remote stream
+      // 6. Ремот стрім
       meeting.on("stream-enabled", (stream: any) => {
         if (
           stream.kind === "video" &&
-          remoteRef.current &&
-          stream.participantId !== meeting.localParticipant.id
+          stream.participantId !== meeting.localParticipant.id &&
+          remoteRef.current
         ) {
           stream.attach(remoteRef.current);
         }
       });
     }
 
-    startMeeting();
+    start();
   }, [meetingId]);
 
   return (
