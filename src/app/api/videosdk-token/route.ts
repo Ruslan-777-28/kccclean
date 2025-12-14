@@ -12,14 +12,12 @@ export async function GET() {
     );
   }
 
-  // VideoSDK JWT payload
   const payload = {
     iss: apiKey,
     sub: "videoSDK",
-    exp: Math.floor(Date.now() / 1000) + 60 * 60, // токен на 1 годину
+    exp: Math.floor(Date.now() / 1000) + 60 * 60,
   };
 
-  // Генеруємо правильний JWT токен
   const token = jwt.sign(payload, secretKey);
 
   return NextResponse.json({
