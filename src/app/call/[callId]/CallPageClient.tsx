@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import VideoSDK from "@videosdk.live/js-sdk/dist/videosdk";
+import VideoSDK from "@videosdk.live/js-sdk";
 
 export default function CallPageClient({ meetingId }: { meetingId: string }) {
   const localRef = useRef<HTMLVideoElement | null>(null);
@@ -16,7 +16,7 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
       const { token } = await res.json();
 
       if (!token) {
-        console.error("Token error");
+        console.error("Token missing");
         return;
       }
 
@@ -34,7 +34,10 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
 
       // 4. Local stream
       meeting.on("meeting-joined", () => {
-        const localStream = meeting.localParticipant?.streams?.find((s: any) => s.kind === "video");
+        const localStream = meeting.localParticipant?.streams?.find(
+          (s: any) => s.kind === "video"
+        );
+
         if (localStream && localRef.current) {
           localStream.attach(localRef.current);
         }
