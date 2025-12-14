@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import VideoSDK from "@videosdk.live/js-sdk/dist/videosdk";
+import VideoSDK from "@videosdk.live/js-sdk";
 
 export default function CallPageClient({ meetingId }: { meetingId: string }) {
   const localRef = useRef<HTMLVideoElement | null>(null);
