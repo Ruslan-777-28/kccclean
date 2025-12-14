@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import VideoSDK from "@videosdk.live/js-sdk";
+import VideoSDK from "@videosdk.live/js-sdk/dist/videosdk";
 
 export default function CallPageClient({ meetingId }: { meetingId: string }) {
   const localRef = useRef<HTMLVideoElement | null>(null);
@@ -11,7 +11,7 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
     if (!meetingId) return;
 
     async function startMeeting() {
-      // 1. Fetch token
+      // Fetch token
       const res = await fetch("/api/videosdk-token");
       const { token, apiKey } = await res.json();
 
@@ -20,13 +20,13 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
         return;
       }
 
-      // 2. Initialize SDK (THIS WAS MISSING)
+      // SDK CONFIG – IMPORTANT
       await VideoSDK.config({
-        apiKey,   // must match VideoSDK dashboard api key
-        token,    // newly generated JWT
+        apiKey,
+        token,
       });
 
-      // 3. Create meeting
+      // Create meeting
       const meeting = VideoSDK.initMeeting({
         meetingId,
         name: "User",
@@ -34,22 +34,26 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
         webcamEnabled: true,
       });
 
-      // 4. Join meeting
+      // Join meeting
       meeting.join();
 
-      // 5. Local stream when meeting joins
+      // Local video
       meeting.on("meeting-joined", () => {
-        const localStream = meeting.localParticipant?.streams?.find(
+        const stream = meeting.localParticipant?.streams?.find(
           (s: any) => s.kind === "video"
         );
-        if (localStream && localRef.current) {
-          localStream.attach(localRef.current);
+        if (stream && localRef.current) {
+          stream.attach(localRef.current);
         }
       });
 
-      // 6. Remote participant stream
+      // Remote video
       meeting.on("stream-enabled", (stream: any) => {
-        if (stream.kind === "video" && remoteRef.current) {
+        if (
+          stream.kind === "video" &&
+          remoteRef.current &&
+          stream.participantId !== meeting.localParticipant.id
+        ) {
           stream.attach(remoteRef.current);
         }
       });
@@ -62,7 +66,7 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
     <div style={{ padding: 20 }}>
       <h2>Meeting: {meetingId}</h2>
       <div style={{ display: "flex", gap: 20 }}>
-        <video ref={localRef} autoPlay playsInline muted width={400} />
+        <video ref={localRef} autoPlay muted playsInline width={400} />
         <video ref={remoteRef} autoPlay playsInline width={400} />
       </div>
     </div>
