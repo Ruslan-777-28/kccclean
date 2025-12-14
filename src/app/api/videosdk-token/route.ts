@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import jwt from "jsonwebtoken";
 
 export async function GET() {
   const apiKey = process.env.NEXT_PUBLIC_VIDEOSDK_API_KEY;
@@ -11,15 +12,18 @@ export async function GET() {
     );
   }
 
+  // VideoSDK JWT payload
   const payload = {
     iss: apiKey,
-    exp: Math.floor(Date.now() / 1000) + 60 * 60,
+    sub: "videoSDK",
+    exp: Math.floor(Date.now() / 1000) + 60 * 60, // токен на 1 годину
   };
 
-  const token = Buffer.from(JSON.stringify(payload)).toString("base64");
+  // Генеруємо правильний JWT токен
+  const token = jwt.sign(payload, secretKey);
 
   return NextResponse.json({
     token,
-    roomId: crypto.randomUUID().slice(0, 12),
+    apiKey,
   });
 }
