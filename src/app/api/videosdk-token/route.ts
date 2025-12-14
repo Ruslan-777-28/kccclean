@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 
 export async function GET() {
-  const API_KEY = process.env.NEXT_PUBLIC_VIDEOSDK_API_KEY;
+  const API_KEY = process.env.VIDEOSDK_API_KEY;
   const SECRET_KEY = process.env.VIDEOSDK_SECRET_KEY;
 
   if (!API_KEY || !SECRET_KEY) {
@@ -19,8 +19,5 @@ export async function GET() {
 
   const token = jwt.sign(payload, SECRET_KEY, { expiresIn: "24h" });
 
-  return NextResponse.json({
-    token,
-    apiKey: API_KEY,
-  });
+  return NextResponse.json({ token });
 }
