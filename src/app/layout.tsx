@@ -13,6 +13,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head></head>
       <body className="font-body antialiased">
         <ClientShell>{children}</ClientShell>
+        <script src="https://sdk.videosdk.live/js-sdk/0.3.42/videosdk.js"></script>
       </body>
     </html>
   );

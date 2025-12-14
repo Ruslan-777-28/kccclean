@@ -1,16 +1,21 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import VideoSDK from "@videosdk.live/js-sdk";
 
 export default function CallPageClient({ meetingId }: { meetingId: string }) {
   const localRef = useRef<HTMLVideoElement | null>(null);
   const remoteRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
-    if (!meetingId) return;
-
     async function startMeeting() {
+      if (!meetingId) return;
+
+      const VideoSDK = (window as any).VideoSDK;
+      if (!VideoSDK) {
+        console.error("VideoSDK failed to load");
+        return;
+      }
+
       // Fetch token
       const res = await fetch("/api/videosdk-token");
       const { token } = await res.json();
@@ -20,10 +25,8 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
         return;
       }
 
-      // SDK CONFIG – IMPORTANT
-      await VideoSDK.config({
-        token,
-      });
+      // Config
+      await VideoSDK.config({ token });
 
       // Create meeting
       const meeting = VideoSDK.initMeeting({
@@ -33,10 +36,8 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
         webcamEnabled: true,
       });
 
-      // Join meeting
       meeting.join();
 
-      // Local video
       meeting.on("meeting-joined", () => {
         const stream = meeting.localParticipant?.streams?.find(
           (s: any) => s.kind === "video"
@@ -46,7 +47,6 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
         }
       });
 
-      // Remote video
       meeting.on("stream-enabled", (stream: any) => {
         if (
           stream.kind === "video" &&
