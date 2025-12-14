@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import VideoSDK from "@videosdk.live/js-sdk";
 
 export default function CallPageClient({ meetingId }: { meetingId: string }) {
   const localRef = useRef<HTMLVideoElement | null>(null);
@@ -10,10 +11,12 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
     if (!meetingId) return;
 
     async function start() {
-
-      // 1. Dynamic import - важливо!
-      const VideoSDK = (await import("@videosdk.live/js-sdk")).default;
-
+      // 1. Check if SDK is loaded
+      if (!VideoSDK) {
+        console.error("VideoSDK failed to load");
+        return;
+      }
+      
       // 2. Отримуємо токен
       const res = await fetch("/api/videosdk-token");
       const { token } = await res.json();
