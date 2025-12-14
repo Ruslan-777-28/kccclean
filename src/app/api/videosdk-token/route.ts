@@ -14,10 +14,14 @@ export async function GET() {
 
   const payload = {
     apikey: API_KEY,
-    permissions: ["allow_join", "allow_mod"],
+    version: 2,
+    permissions: ["allow_join", "allow_mod", "allow_publish"],
   };
 
-  const token = jwt.sign(payload, SECRET_KEY, { expiresIn: "24h" });
+  const token = jwt.sign(payload, SECRET_KEY, {
+    algorithm: "HS256",
+    expiresIn: "24h",
+  });
 
   return NextResponse.json({ token });
 }
