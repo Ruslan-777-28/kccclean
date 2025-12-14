@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 
 export async function GET() {
-  const API_KEY = process.env.VIDEOSDK_API_KEY;
-  const SECRET = process.env.VIDEOSDK_SECRET_KEY;
+  const apiKey = process.env.VIDEOSDK_API_KEY;
+  const secretKey = process.env.VIDEOSDK_SECRET_KEY;
 
-  if (!API_KEY || !SECRET) {
+  if (!apiKey || !secretKey) {
     return NextResponse.json(
       { error: "Missing VideoSDK API credentials" },
       { status: 500 }
@@ -13,41 +13,42 @@ export async function GET() {
   }
 
   try {
-    // Create JWT token
+    // 1) Генеруємо JWT токен
     const token = jwt.sign(
       {
-        apikey: API_KEY,
+        apikey: apiKey,
         permissions: ["allow_join", "allow_mod"],
       },
-      SECRET,
+      secretKey,
       { expiresIn: "24h" }
     );
 
-    // Create room
-    const roomRes = await fetch("https://api.videosdk.live/v2/rooms", {
+    // 2) Створюємо кімнату
+    const createRoom = await fetch("https://api.videosdk.live/v2/rooms", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `${token}`,
         "Content-Type": "application/json",
       },
+      body: JSON.stringify({}),
     });
 
-    const room = await roomRes.json();
+    const roomData = await createRoom.json();
 
-    if (!roomRes.ok) {
+    if (!createRoom.ok) {
       return NextResponse.json(
-        { error: "Failed to create room", details: room },
+        { error: "Failed to create room", details: roomData },
         { status: 401 }
       );
     }
 
     return NextResponse.json({
-      roomId: room.roomId,
       token,
+      roomId: roomData.roomId,
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Server error", details: error },
+      { error: "Server Error", details: String(error) },
       { status: 500 }
     );
   }
