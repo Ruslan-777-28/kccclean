@@ -2,26 +2,24 @@ import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
 
 export async function GET() {
-  const apiKey = process.env.NEXT_PUBLIC_VIDEOSDK_API_KEY;
-  const secretKey = process.env.VIDEOSDK_SECRET_KEY;
+  const API_KEY = process.env.VIDEOSDK_API_KEY;        // public api key
+  const SECRET_KEY = process.env.VIDEOSDK_SECRET_KEY;  // private secret key
 
-  if (!apiKey || !secretKey) {
+  if (!API_KEY || !SECRET_KEY) {
     return NextResponse.json(
-      { error: "Missing VideoSDK API credentials" },
+      { error: "Missing VideoSDK env vars" },
       { status: 500 }
     );
   }
 
   const payload = {
-    iss: apiKey,
-    sub: "videoSDK",
-    exp: Math.floor(Date.now() / 1000) + 60 * 60,
+    apikey: API_KEY,        // STRICT name → MUST be "apikey"
+    permissions: ["allow_join", "allow_mod"],
   };
 
-  const token = jwt.sign(payload, secretKey);
-
-  return NextResponse.json({
-    token,
-    apiKey,
+  const token = jwt.sign(payload, SECRET_KEY, {
+    expiresIn: "24h",
   });
+
+  return NextResponse.json({ token });
 }
