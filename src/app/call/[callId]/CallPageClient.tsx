@@ -13,10 +13,11 @@ export default function CallPageClient({ meetingId }: { meetingId: string }) {
     async function startMeeting() {
       // Fetch token
       const res = await fetch("/api/videosdk-token");
-      const { token, apiKey } = await res.json();
+      const { token } = await res.json();
+      const apiKey = process.env.NEXT_PUBLIC_VIDEOSDK_API_KEY;
 
-      if (!token) {
-        console.error("Token missing");
+      if (!token || !apiKey) {
+        console.error("Token or apiKey missing");
         return;
       }
 
