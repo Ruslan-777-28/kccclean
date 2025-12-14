@@ -13,7 +13,7 @@ export async function GET() {
   }
 
   try {
-    // 1) Генеруємо JWT токен
+    // 1. Генеруємо JWT токен
     const token = jwt.sign(
       {
         apikey: apiKey,
@@ -23,33 +23,34 @@ export async function GET() {
       { expiresIn: "24h" }
     );
 
-    // 2) Створюємо кімнату
-    const createRoom = await fetch("https://api.videosdk.live/v2/rooms", {
+    // 2. Створюємо кімнату VideoSDK
+    const res = await fetch("https://api.videosdk.live/v2/rooms", {
       method: "POST",
       headers: {
-        Authorization: `${token}`,
+        Authorization: token,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({}),
     });
 
-    const roomData = await createRoom.json();
+    const data = await res.json();
 
-    if (!createRoom.ok) {
+    if (!res.ok) {
       return NextResponse.json(
-        { error: "Failed to create room", details: roomData },
+        { error: "Failed to create room", details: data },
         { status: 401 }
       );
     }
 
     return NextResponse.json({
       token,
-      roomId: roomData.roomId,
+      roomId: data.roomId,
     });
   } catch (error) {
     return NextResponse.json(
-      { error: "Server Error", details: String(error) },
+      { error: "Server error", details: error },
       { status: 500 }
     );
   }
 }
+
