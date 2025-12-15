@@ -18,10 +18,8 @@ export default function CallButton({ callerId, calleeId }: CallButtonProps) {
   const handleCall = async () => {
     try {
       setLoading(true);
-      console.log("🔥 BEFORE startCall");
-      const callId = await startCall(callerId, calleeId);
-      console.log("🔥 AFTER startCall", callId);
-      router.push(`/call/${callId}`);
+      const roomId = await startCall(callerId, calleeId);
+      router.push(`/call/${roomId}`);
     } catch (err) {
       console.error("Call start error:", err);
       setLoading(false);

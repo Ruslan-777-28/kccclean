@@ -9,7 +9,7 @@ import {
   collection,
 } from "firebase/firestore";
 import { getFirebaseDb } from "./firebase";
-import { fetchVideoSDKToken, createVideoSDKRoom } from "./videosdk";
+
 
 // -----------------------------
 // ІНІЦІАЦІЯ ВИКЛИКУ
@@ -23,8 +23,11 @@ export async function startCall(callerId: string, calleeId: string) {
     status: "ringing",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-    roomId: null,
+    roomId: null, // roomId is now the callId itself
   });
+
+  // The roomId for Cloudflare will be the document ID of the call
+  await updateDoc(callDocRef, { roomId: callDocRef.id });
 
   return callDocRef.id;
 }
@@ -42,22 +45,15 @@ export async function acceptCall(callId: string) {
     throw new Error("Call does not exist");
   }
 
-  // 1️⃣ Отримуємо VideoSDK токен
-  const token = await fetchVideoSDKToken();
-  if (!token) throw new Error("Failed to obtain VideoSDK token");
-
-  // 2️⃣ Створюємо кімнату на VideoSDK
-  const roomId = await createVideoSDKRoom(token);
-  if (!roomId) throw new Error("Failed to create VideoSDK room");
-
-  // 3️⃣ Оновлюємо Firestore
+  // With Cloudflare, we don't need to create a room here.
+  // The room is implicitly created when the host joins.
+  // We just update the status.
   await updateDoc(callRef, {
     status: "accepted",
-    roomId,
     updatedAt: serverTimestamp(),
   });
 
-  return roomId;
+  return callId; // The roomId is the callId
 }
 
 // -----------------------------

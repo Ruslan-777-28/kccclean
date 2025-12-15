@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
 
-const ORG_ID = "93707c21-7290-442f-805d-583c2f05f395";
-const BASIC_AUTH =
-  "Basic OTM3MDdjMjEtNzI5MC00NDJmLTgwNWQtNTgzYzJmMDVmMzk1OjUwOWUwMDczOWRlYTk4NDE5Y2Yz";
+const ORG_ID = process.env.CLOUDFLARE_ORG_ID!;
+const BASIC_AUTH = process.env.CLOUDFLARE_BASIC_AUTH!;
 
 export async function POST(req: Request) {
   try {
     const { presetHost, presetParticipant } = await req.json();
 
-    // Create room
-    const roomRes = await fetch(
+    const createRoom = await fetch(
       `https://api.realtime.cloudflare.com/v1/organizations/${ORG_ID}/rooms`,
       {
         method: "POST",
@@ -25,58 +23,35 @@ export async function POST(req: Request) {
       }
     );
 
-    const room = await roomRes.json();
-
+    const room = await createRoom.json();
     if (!room?.id) {
-      return NextResponse.json(
-        { error: "Failed to create room", details: room },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "room creation failed", room }, { status: 500 });
     }
 
-    // Create host token
-    const hostTokenRes = await fetch(
-      `https://api.realtime.cloudflare.com/v1/organizations/${ORG_ID}/rooms/${room.id}/tokens`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: BASIC_AUTH,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          preset: presetHost,
-        }),
-      }
-    );
+    const createToken = async (preset: any) => {
+      const r = await fetch(
+        `https://api.realtime.cloudflare.com/v1/organizations/${ORG_ID}/rooms/${room.id}/tokens`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: BASIC_AUTH,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ preset }),
+        }
+      );
+      return r.json();
+    };
 
-    const hostToken = await hostTokenRes.json();
-
-    // Create participant token
-    const participantTokenRes = await fetch(
-      `https://api.realtime.cloudflare.com/v1/organizations/${ORG_ID}/rooms/${room.id}/tokens`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: BASIC_AUTH,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          preset: presetParticipant,
-        }),
-      }
-    );
-
-    const participantToken = await participantTokenRes.json();
+    const hostToken = await createToken(presetHost);
+    const participantToken = await createToken(presetParticipant);
 
     return NextResponse.json({
       roomId: room.id,
       hostToken: hostToken.token,
       participantToken: participantToken.token,
     });
-  } catch (err: any) {
-    return NextResponse.json(
-      { error: "Server Error", details: err.message },
-      { status: 500 }
-    );
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }

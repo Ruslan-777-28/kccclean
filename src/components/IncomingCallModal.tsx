@@ -23,11 +23,9 @@ export default function IncomingCallModal({
   const handleAccept = async () => {
     try {
       setLoading(true);
-      await acceptCall(callId);
+      const roomId = await acceptCall(callId);
       onClose();
-
-      // 🔥 Переходимо в кімнату за callId, а не roomId
-      router.push(`/call/${callId}`);
+      router.push(`/call/${roomId}`);
     } catch (err: any) {
       console.error("Accept failed:", err);
       toast({
@@ -43,7 +41,7 @@ export default function IncomingCallModal({
     try {
       await declineCall(callId);
       onClose();
-    } catch (err: any) {
+    } catch (err: any)
       console.error("Decline error:", err);
        toast({
         variant: "destructive",
