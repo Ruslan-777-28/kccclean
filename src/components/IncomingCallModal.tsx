@@ -41,7 +41,7 @@ export default function IncomingCallModal({
     try {
       await declineCall(callId);
       onClose();
-    } catch (err: any)
+    } catch (err: any) {
       console.error("Decline error:", err);
        toast({
         variant: "destructive",
