@@ -1,7 +1,7 @@
-import RealtimeCallClient from './RealtimeCallClient';
 
-export default function RealtimeCallPage({ params }: { params: { roomId: string } }) {
-  // We pass the roomId from the URL to the client component.
-  // The client will handle fetching tokens and connecting to the Cloudflare Realtime room.
-  return <RealtimeCallClient roomId={params.roomId} />;
+import CallPageClient from "./CallPageClient";
+
+export default function CallPage({ params }: { params: { roomId: string } }) {
+  // We use `roomId` as the meetingId for VideoSDK
+  return <CallPageClient meetingId={params.roomId} />;
 }
