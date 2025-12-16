@@ -11,6 +11,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <script
+          src="https://realtime.cloudflare.com/v1/sdk.js"
+        ></script>
       </head>
       <body className="font-body antialiased">
         <ClientShell>{children}</ClientShell>
